@@ -1,27 +1,57 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { collections } from "@/lib/db/schemas";
 import { auth } from "@clerk/nextjs/server";
-import { eq, and } from "drizzle-orm";
-import { boardMembers, collections } from "@/lib/db/schemas";
+import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 
-export async function POST(req: Request, { params }: { params: { boardId: string } }) {
+export async function GET(_: Request, { params }: { params: { boardId: string; collectionId: string } }) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const result = await db.query.collections.findFirst({
+      where: (c, { and, eq }) =>
+        and(eq(c.id, params.collectionId), eq(c.boardId, params.boardId)),
+    });
+
+    return NextResponse.json({ collection: result });
+  } catch (error) {
+    console.error("Error fetching collection:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request, { params }: { params: { boardId: string; collectionId: string } }) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { name } = await req.json();
-  if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
-  const isMember = await db.query.boardMembers.findFirst({
-    where: (m, { eq, and }) => and(eq(m.boardId, params.boardId), eq(m.userId, userId)),
-  });
+  try {
+    await db
+      .update(collections)
+      .set({ name })
+      .where(eq(collections.id, params.collectionId));
 
-  if (!isMember) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error updating collection:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
 
-  const result = await db.insert(collections).values({
-    name,
-    boardId: params.boardId,
-    createdBy: userId,
-  }).returning({ id: collections.id });
+export async function DELETE(_: Request, { params }: { params: { boardId: string; collectionId: string } }) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  return NextResponse.json({ collectionId: result[0].id });
+  try {
+    await db
+      .delete(collections)
+      .where(eq(collections.id, params.collectionId));
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting collection:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }
