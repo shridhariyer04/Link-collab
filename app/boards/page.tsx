@@ -1,7 +1,8 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, FolderOpen, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderOpen, Search, Wifi, WifiOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import io, { Socket } from 'socket.io-client';
 
 interface Board {
   id: string;
@@ -21,11 +22,38 @@ const BoardsPage: React.FC = () => {
   const [showBoardModal, setShowBoardModal] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [boardName, setBoardName] = useState<string>('');
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
   
   const router = useRouter();
 
   useEffect(() => {
     fetchBoards();
+    
+    // Initialize socket connection
+    const newSocket = io('http://localhost:4000');
+    setSocket(newSocket);
+
+    // Socket connection handlers
+    newSocket.on('connect', () => {
+      console.log('Connected to socket server');
+      setIsConnected(true);
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Disconnected from socket server');
+      setIsConnected(false);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      setIsConnected(false);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      newSocket.disconnect();
+    };
   }, []);
 
   const fetchBoards = async (): Promise<void> => {
@@ -56,6 +84,12 @@ const BoardsPage: React.FC = () => {
         await fetchBoards();
         setBoardName('');
         setShowBoardModal(false);
+        
+        // Emit board creation event (optional - if you want to sync board creation)
+        if (socket && isConnected) {
+          const newBoard = await response.json();
+          socket.emit('board-created', newBoard);
+        }
       }
     } catch (error) {
       console.error('Error creating board:', error);
@@ -73,6 +107,11 @@ const BoardsPage: React.FC = () => {
       if (response.ok) {
         await fetchBoards();
         setEditingItem(null);
+        
+        // Emit board update event (optional)
+        if (socket && isConnected) {
+          socket.emit('board-updated', { boardId, name });
+        }
       }
     } catch (error) {
       console.error('Error updating board:', error);
@@ -89,6 +128,11 @@ const BoardsPage: React.FC = () => {
       
       if (response.ok) {
         await fetchBoards();
+        
+        // Emit board deletion event (optional)
+        if (socket && isConnected) {
+          socket.emit('board-deleted', { boardId });
+        }
       }
     } catch (error) {
       console.error('Error deleting board:', error);
@@ -115,7 +159,23 @@ const BoardsPage: React.FC = () => {
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">My Boards</h1>
+            <div className="flex items-center space-x-3">
+              <h1 className="text-2xl font-bold text-gray-900">My Boards</h1>
+              {/* Connection Status Indicator */}
+              <div className="flex items-center space-x-2">
+                {isConnected ? (
+                  <div className="flex items-center space-x-1 text-green-600">
+                    <Wifi className="w-4 h-4" />
+                    <span className="text-xs">Connected</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1 text-red-600">
+                    <WifiOff className="w-4 h-4" />
+                    <span className="text-xs">Disconnected</span>
+                  </div>
+                )}
+              </div>
+            </div>
             
             <div className="flex items-center space-x-3">
               <div className="relative">

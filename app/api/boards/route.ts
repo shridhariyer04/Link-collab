@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 
+
 export async function GET() {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -22,6 +23,8 @@ export async function GET() {
             .innerJoin(boardMembers, eq(boards.id, boardMembers.boardId))
             .where(eq(boardMembers.userId, userId));
 
+
+           
         return NextResponse.json({ boards: userBoards });
     } catch (error) {
         console.error('Error fetching boards:', error);

@@ -1,17 +1,23 @@
 import { db } from "@/lib/db";
 import { collections } from "@/lib/db/schemas";
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { NextResponse, NextRequest } from "next/server";
+import { eq, and } from "drizzle-orm";
 
-export async function GET(_: Request, { params }: { params: { boardId: string; collectionId: string } }) {
+// ──────────────── GET Collection ────────────────
+export async function GET(
+  _: NextRequest,
+  context: { params: { boardId: string; collectionId: string } }
+) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { boardId, collectionId } = context.params;
 
   try {
     const result = await db.query.collections.findFirst({
       where: (c, { and, eq }) =>
-        and(eq(c.id, params.collectionId), eq(c.boardId, params.boardId)),
+        and(eq(c.id, collectionId), eq(c.boardId, boardId)),
     });
 
     return NextResponse.json({ collection: result });
@@ -21,17 +27,22 @@ export async function GET(_: Request, { params }: { params: { boardId: string; c
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { boardId: string; collectionId: string } }) {
+// ──────────────── PATCH Collection ────────────────
+export async function PATCH(
+  req: NextRequest,
+  context: { params: { boardId: string; collectionId: string } }
+) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { boardId, collectionId } = context.params;
   const { name } = await req.json();
 
   try {
     await db
       .update(collections)
       .set({ name })
-      .where(eq(collections.id, params.collectionId));
+      .where(and(eq(collections.id, collectionId), eq(collections.boardId, boardId)));
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -40,14 +51,20 @@ export async function PATCH(req: Request, { params }: { params: { boardId: strin
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: { boardId: string; collectionId: string } }) {
+// ──────────────── DELETE Collection ────────────────
+export async function DELETE(
+  _: NextRequest,
+  context: { params: { boardId: string; collectionId: string } }
+) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { boardId, collectionId } = context.params;
 
   try {
     await db
       .delete(collections)
-      .where(eq(collections.id, params.collectionId));
+      .where(and(eq(collections.id, collectionId), eq(collections.boardId, boardId)));
 
     return NextResponse.json({ success: true });
   } catch (error) {

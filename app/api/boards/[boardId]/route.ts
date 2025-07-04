@@ -7,12 +7,12 @@ import { NextRequest, NextResponse } from "next/server";
 // ──────────────── GET Board (Check membership) ────────────────
 export async function GET(
   _: NextRequest,
-  { params }: { params: { boardId: string } }
+  context: { params: { boardId: string } }
 ) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const boardId = params.boardId;
+  const boardId = context.params.boardId;
 
   const board = await db
     .select()
@@ -31,15 +31,17 @@ export async function GET(
 // ──────────────── PATCH Board (Update Name) ────────────────
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { boardId: string } }
+  context: { params: { boardId: string } }
 ) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const boardId = params.boardId;
+  const boardId = context.params.boardId;
   const { name } = await req.json();
 
-  if (!name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  if (!name?.trim()) {
+    return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  }
 
   const member = await db.query.boardMembers.findFirst({
     where: (bm, { eq, and }) => and(eq(bm.boardId, boardId), eq(bm.userId, userId)),
@@ -55,12 +57,12 @@ export async function PATCH(
 // ──────────────── DELETE Board ────────────────
 export async function DELETE(
   _: NextRequest,
-  { params }: { params: { boardId: string } }
+  context: { params: { boardId: string } }
 ) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const boardId = params.boardId;
+  const boardId = context.params.boardId;
 
   const member = await db.query.boardMembers.findFirst({
     where: (bm, { eq, and }) => and(eq(bm.boardId, boardId), eq(bm.userId, userId)),

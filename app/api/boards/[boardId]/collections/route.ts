@@ -5,12 +5,12 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
-export async function GET(_: Request, { params }: { params: Promise<{ boardId: string }> }) {
+export async function GET(req: Request,context:{params:{boardId:string}}) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Await params before using
-  const { boardId } = await params;
+  const boardId = context.params.boardId
 
   try {
     const result = await db

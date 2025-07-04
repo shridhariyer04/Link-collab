@@ -1,7 +1,8 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, FolderOpen, Search, ArrowLeft } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderOpen, Search, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
+import io, { Socket } from 'socket.io-client';
 
 interface Board {
   id: string;
@@ -30,6 +31,8 @@ export default function CollectionsPage(){
   const [showCollectionModal, setShowCollectionModal] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [collectionName, setCollectionName] = useState<string>('');
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
   
   const router = useRouter();
   const params = useParams();
@@ -39,6 +42,57 @@ export default function CollectionsPage(){
     if (boardId) {
       fetchBoard();
       fetchCollections();
+      
+      // Initialize socket connection
+      const newSocket = io('http://localhost:4000');
+      setSocket(newSocket);
+
+      // Socket connection handlers
+      newSocket.on('connect', () => {
+        console.log('Connected to socket server');
+        setIsConnected(true);
+        
+        // Join the board room
+        newSocket.emit('join-board', boardId);
+      });
+
+      newSocket.on('disconnect', () => {
+        console.log('Disconnected from socket server');
+        setIsConnected(false);
+      });
+
+      newSocket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        setIsConnected(false);
+      });
+
+      // Listen for real-time updates (if you want to sync collections in real-time)
+      newSocket.on('collection-added', (data: { boardId: string; collection: Collection }) => {
+        if (data.boardId === boardId) {
+          setCollections(prev => [...prev, data.collection]);
+        }
+      });
+
+      newSocket.on('collection-updated', (data: { boardId: string; collectionId: string; fields: Partial<Collection> }) => {
+        if (data.boardId === boardId) {
+          setCollections(prev => prev.map(collection => 
+            collection.id === data.collectionId 
+              ? { ...collection, ...data.fields }
+              : collection
+          ));
+        }
+      });
+
+      newSocket.on('collection-deleted', (data: { boardId: string; collectionId: string }) => {
+        if (data.boardId === boardId) {
+          setCollections(prev => prev.filter(collection => collection.id !== data.collectionId));
+        }
+      });
+
+      // Cleanup on unmount
+      return () => {
+        newSocket.disconnect();
+      };
     }
   }, [boardId]);
 
@@ -79,9 +133,15 @@ export default function CollectionsPage(){
       });
       
       if (response.ok) {
+        const data = await response.json();
         await fetchCollections();
         setCollectionName('');
         setShowCollectionModal(false);
+        
+        // Emit collection creation event (optional - if you want to sync collection creation)
+        if (socket && isConnected) {
+          socket.emit('collection-created', { boardId, collection: data.collection });
+        }
       }
     } catch (error) {
       console.error('Error creating collection:', error);
@@ -99,6 +159,11 @@ export default function CollectionsPage(){
       if (response.ok) {
         await fetchCollections();
         setEditingItem(null);
+        
+        // Emit collection update event (optional)
+        if (socket && isConnected) {
+          socket.emit('collection-updated', { boardId, collectionId, fields: { name } });
+        }
       }
     } catch (error) {
       console.error('Error updating collection:', error);
@@ -115,6 +180,11 @@ export default function CollectionsPage(){
       
       if (response.ok) {
         await fetchCollections();
+        
+        // Emit collection deletion event (optional)
+        if (socket && isConnected) {
+          socket.emit('collection-deleted', { boardId, collectionId });
+        }
       }
     } catch (error) {
       console.error('Error deleting collection:', error);
@@ -153,6 +223,20 @@ export default function CollectionsPage(){
                   {board?.name || 'Collections'}
                 </h1>
                 <p className="text-sm text-gray-500">Board Collections</p>
+              </div>
+              {/* Connection Status Indicator */}
+              <div className="flex items-center space-x-2">
+                {isConnected ? (
+                  <div className="flex items-center space-x-1 text-green-600">
+                    <Wifi className="w-4 h-4" />
+                    <span className="text-xs">Connected</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1 text-red-600">
+                    <WifiOff className="w-4 h-4" />
+                    <span className="text-xs">Disconnected</span>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -282,4 +366,3 @@ export default function CollectionsPage(){
     </div>
   );
 };
-
