@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Modern Link Cards</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    .link-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
+    }
+    .line-clamp-3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+  <header class="bg-white border-b shadow-sm">
+    <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+      <div>
+        <h1 class="text-xl font-semibold text-gray-900">My Collection</h1>
+        <p class="text-sm text-gray-500">2 curated design links</p>
+      </div>
+      <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+        <i class="fas fa-plus"></i><span>Add</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-6 py-8 grid gap-6 md:grid-cols-2">
+    <!-- YouTube Card -->
+    <div class="link-card bg-white rounded-2xl border border-gray-200 p-5 transition-all">
+      <div class="flex items-start gap-4">
+        <div class="p-2 bg-red-100 rounded-xl">
+          <img src="https://www.youtube.com/favicon.ico" alt="YouTube" class="w-5 h-5" />
+        </div>
+        <div class="flex-1">
+          <h3 class="text-base font-semibold text-gray-900 mb-1">
+            Advanced CSS Grid Layout
+          </h3>
+          <p class="text-sm text-gray-500 mb-1">youtube.com/watch?v=grid-tutorial</p>
+          <p class="text-sm text-gray-600 line-clamp-3">
+            Learn how to master CSS Grid with advanced layout tips and modern techniques.
+          </p>
+        </div>
+        <div class="flex flex-col gap-2 items-end">
+          <button class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-pen"></i>
+          </button>
+          <button class="text-red-500 hover:text-red-600">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+      <div class="mt-4">
+        <a
+  href="#"
+  class="inline-flex items-center justify-center gap-2 text-sm font-medium text-white bg-blue-600 px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200 transform hover:scale-[1.02]"
+>
+  <i class="fas fa-external-link-alt text-sm"></i>
+  Open Link
+</a>
+      </div>
+    </div>
+
+    <!-- GitHub Card -->
+    <div class="link-card bg-white rounded-2xl border border-gray-200 p-5 transition-all">
+      <div class="flex items-start gap-4">
+        <div class="p-2 bg-gray-100 rounded-xl">
+          <img src="https://github.com/favicon.ico" alt="GitHub" class="w-5 h-5" />
+        </div>
+        <div class="flex-1">
+          <h3 class="text-base font-semibold text-gray-900 mb-1">
+            React Component Library
+          </h3>
+          <p class="text-sm text-gray-500 mb-1">github.com/user/react-lib</p>
+          <p class="text-sm text-gray-600 line-clamp-3">
+            A modern, customizable React component library with TypeScript support and Storybook docs.
+          </p>
+        </div>
+        <div class="flex flex-col gap-2 items-end">
+          <button class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-pen"></i>
+          </button>
+          <button class="text-red-500 hover:text-red-600">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+      <div class="mt-4">
+<a
+  href="#"
+  class="inline-flex items-center justify-center gap-2 text-sm font-medium text-white bg-blue-600 px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200 transform hover:scale-[1.02]"
+>
+  <i class="fas fa-external-link-alt text-sm"></i>
+  Open Link
+</a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

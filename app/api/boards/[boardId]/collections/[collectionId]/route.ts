@@ -7,18 +7,18 @@ import { requireBoardAccess } from "@/lib/permission";
 
 export async function GET(
   _: NextRequest,
-  { params }: { params: { boardId: string; collectionId: string } }
+  { params }: { params: Promise<{ boardId: string; collectionId: string }> }
 ) {
   try {
-    const access = await requireBoardAccess(params.boardId);
+    const { boardId, collectionId } = await params;
+    
+    const access = await requireBoardAccess(boardId);
     if (access instanceof NextResponse) {
       return access;
     }
 
-    const { collectionId } = params;
-
     const collection = await db.query.collections.findFirst({
-      where: and(eq(collections.id, collectionId), eq(collections.boardId, params.boardId)),
+      where: and(eq(collections.id, collectionId), eq(collections.boardId, boardId)),
     });
 
     if (!collection) {
@@ -34,10 +34,12 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { boardId: string; collectionId: string } }
+  { params }: { params: Promise<{ boardId: string; collectionId: string }> }
 ) {
   try {
-    const access = await requireBoardAccess(params.boardId);
+    const { boardId, collectionId } = await params;
+    
+    const access = await requireBoardAccess(boardId);
     if (access instanceof NextResponse) {
       return access;
     }
@@ -47,7 +49,6 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden: Only owners or editors can update collections" }, { status: 403 });
     }
 
-    const { collectionId } = params;
     const { name } = await req.json();
 
     if (!name || typeof name !== "string" || !name.trim()) {
@@ -57,7 +58,7 @@ export async function PATCH(
     const [updatedCollection] = await db
       .update(collections)
       .set({ name })
-      .where(and(eq(collections.id, collectionId), eq(collections.boardId, params.boardId)))
+      .where(and(eq(collections.id, collectionId), eq(collections.boardId, boardId)))
       .returning();
 
     if (!updatedCollection) {
@@ -73,10 +74,12 @@ export async function PATCH(
 
 export async function DELETE(
   _: NextRequest,
-  { params }: { params: { boardId: string; collectionId: string } }
+  { params }: { params: Promise<{ boardId: string; collectionId: string }> }
 ) {
   try {
-    const access = await requireBoardAccess(params.boardId);
+    const { boardId, collectionId } = await params;
+    
+    const access = await requireBoardAccess(boardId);
     if (access instanceof NextResponse) {
       return access;
     }
@@ -86,11 +89,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden: Only owners or editors can delete collections" }, { status: 403 });
     }
 
-    const { collectionId } = params;
-
     const [deletedCollection] = await db
       .delete(collections)
-      .where(and(eq(collections.id, collectionId), eq(collections.boardId, params.boardId)))
+      .where(and(eq(collections.id, collectionId), eq(collections.boardId, boardId)))
       .returning();
 
     if (!deletedCollection) {

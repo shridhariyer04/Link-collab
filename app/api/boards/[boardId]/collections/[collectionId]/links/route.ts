@@ -5,27 +5,27 @@ import { v4 as uuidv4 } from "uuid";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { requireBoardAccess } from "@/lib/permission";
+
 // Explicit type for context
 type Context = {
-  params: {
+  params: Promise<{
     boardId: string;
     collectionId: string;
-  };
+  }>;
 };
 
 // GET /api/boards/:boardId/collections/:collectionId/links
 export async function GET(_: NextRequest, context: Context) {
- const boardId = context.params.boardId;
- const access = await requireBoardAccess(boardId);
+  const { boardId, collectionId } = await context.params;
+  
+  const access = await requireBoardAccess(boardId);
+  if (access instanceof NextResponse) {
+    return access; // early return if unauthorized
+  }
 
-if (access instanceof NextResponse) {
-  return access; // early return if unauthorized
-}
+  const { userId, role } = access; // now safe to destructure
 
-const { userId, role } = access; // now safe to destructure
-
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const  collectionId  = context.params.collectionId;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const result = await db.query.links.findMany({
@@ -41,17 +41,17 @@ const { userId, role } = access; // now safe to destructure
 
 // POST /api/boards/:boardId/collections/:collectionId/links
 export async function POST(req: NextRequest, context: Context) {
-  const boardId = context.params.boardId;
- const access = await requireBoardAccess(boardId);
+  const { boardId, collectionId } = await context.params;
+  
+  const access = await requireBoardAccess(boardId);
+  if (access instanceof NextResponse) {
+    return access; // early return if unauthorized
+  }
 
-if (access instanceof NextResponse) {
-  return access; // early return if unauthorized
-}
+  const { userId, role } = access; // now safe to destructure
 
-const { userId, role } = access; // now safe to destructure
-
-   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const  collectionId  = context.params.collectionId;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  
   const { url } = await req.json();
   if (!url) return NextResponse.json({ error: "URL is required" }, { status: 400 });
 
@@ -72,18 +72,17 @@ const { userId, role } = access; // now safe to destructure
 
 // DELETE /api/boards/:boardId/collections/:collectionId/links?linkId=...
 export async function DELETE(req: NextRequest, context: Context) {
- const boardId = context.params.boardId;
- const access = await requireBoardAccess(boardId);
+  const { boardId, collectionId } = await context.params;
+  
+  const access = await requireBoardAccess(boardId);
+  if (access instanceof NextResponse) {
+    return access; // early return if unauthorized
+  }
 
-if (access instanceof NextResponse) {
-  return access; // early return if unauthorized
-}
+  const { userId, role } = access; // now safe to destructure
 
-const { userId, role } = access; // now safe to destructure
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-   
   const { searchParams } = new URL(req.url);
   const linkId = searchParams.get("linkId");
   if (!linkId) return NextResponse.json({ error: "Missing linkId" }, { status: 400 });

@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, ExternalLink, Search, ArrowLeft, Wifi, WifiOff, Link2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, ExternalLink, Search, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 
@@ -23,6 +23,8 @@ interface Link {
   id: string;
   title: string;
   url: string;
+  description?: string;
+  favicon?: string;
   collectionId: string;
   createdBy: string;
   createdAt?: string;
@@ -42,6 +44,7 @@ export default function LinksPage() {
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [linkTitle, setLinkTitle] = useState<string>('');
   const [linkUrl, setLinkUrl] = useState<string>('');
+  const [linkDescription, setLinkDescription] = useState<string>('');
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   
@@ -134,20 +137,20 @@ export default function LinksPage() {
   };
 
   const fetchLinks = async (): Promise<void> => {
-  setIsLoading(true);
-  try {
-    const response = await fetch(`/api/boards/${boardId}/collections/${collectionId}/links`);
-    if (response.ok) {
-      const data: ApiResponse<Link[]> = await response.json();
-      console.log('API Response:', data); // Debug log
-      console.log('Links array:', data.links); // Debug log
-      setLinks(data.links || []);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/boards/${boardId}/collections/${collectionId}/links`);
+      if (response.ok) {
+        const data: ApiResponse<Link[]> = await response.json();
+        console.log('API Response:', data);
+        console.log('Links array:', data.links);
+        setLinks(data.links || []);
+      }
+    } catch (error) {
+      console.error('Error fetching links:', error);
     }
-  } catch (error) {
-    console.error('Error fetching links:', error);
-  }
-  setIsLoading(false);
-};
+    setIsLoading(false);
+  };
 
   const createLink = async (): Promise<void> => {
     if (!linkTitle.trim() || !linkUrl.trim()) return;
@@ -156,7 +159,11 @@ export default function LinksPage() {
       const response = await fetch(`/api/boards/${boardId}/collections/${collectionId}/links`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: linkTitle, url: linkUrl })
+        body: JSON.stringify({ 
+          title: linkTitle, 
+          url: linkUrl, 
+          description: linkDescription 
+        })
       });
       
       if (response.ok) {
@@ -167,6 +174,7 @@ export default function LinksPage() {
         setLinks(prev => [...prev, newLink]);
         setLinkTitle('');
         setLinkUrl('');
+        setLinkDescription('');
         setShowLinkModal(false);
         
         // Emit link creation event for real-time sync
@@ -183,7 +191,7 @@ export default function LinksPage() {
     }
   };
 
-  const updateLink = async (linkId: string, fields: Partial<{ title: string; url: string }>): Promise<void> => {
+  const updateLink = async (linkId: string, fields: Partial<{ title: string; url: string; description: string }>): Promise<void> => {
     try {
       const response = await fetch(`/api/boards/${boardId}/collections/${collectionId}/links/${linkId}`, {
         method: 'PATCH',
@@ -242,24 +250,26 @@ export default function LinksPage() {
     }
   };
 
- const filteredLinks = Array.isArray(links) ? links.filter(link => 
-  link && 
-  typeof link === 'object' && 
-  (
-    (link.title && link.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (link.url && link.url.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
-) : [];
+  const filteredLinks = Array.isArray(links) ? links.filter(link => 
+    link && 
+    typeof link === 'object' && 
+    (
+      (link.title && link.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (link.url && link.url.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (link.description && link.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+  ) : [];
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>, action: () => void): void => {
-    if (e.key === 'Enter') {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, action: () => void): void => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       action();
     }
   };
 
-  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>, linkId: string, field: 'title' | 'url'): void => {
+  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, linkId: string, field: 'title' | 'url' | 'description'): void => {
     const value = e.target.value.trim();
-    if (value) {
+    if (value || field === 'description') {
       updateLink(linkId, { [field]: value });
     }
   };
@@ -273,12 +283,29 @@ export default function LinksPage() {
     }
   };
 
+  const getFaviconUrl = (url: string): string => {
+    try {
+      const domain = new URL(url).hostname;
+      return `https://${domain}/favicon.ico`;
+    } catch {
+      return '';
+    }
+  };
+
+  const getDisplayUrl = (url: string): string => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+      <header className="bg-white border-b shadow-sm">
+        <div className="max-w-5xl mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push(`/boards/${boardId}/collections`)}
@@ -287,11 +314,11 @@ export default function LinksPage() {
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {collection?.name || 'Links'}
+                <h1 className="text-xl font-semibold text-gray-900">
+                  {collection?.name || 'My Collection'}
                 </h1>
                 <p className="text-sm text-gray-500">
-                  {board?.name} • Collection Links
+                  {filteredLinks.length} curated links
                 </p>
               </div>
               {/* Connection Status Indicator */}
@@ -327,136 +354,199 @@ export default function LinksPage() {
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add Link</span>
+                <span>Add</span>
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-5xl mx-auto px-6 py-8">
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2">
             {filteredLinks.map((link) => (
-              <div key={link.id} className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-shadow">
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start space-x-3 flex-1">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <Link2 className="w-6 h-6 text-green-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {editingItem === link.id ? (
-                          <div className="space-y-2">
-                            <input
-                              type="text"
-                              defaultValue={link.title}
-                              onBlur={(e) => handleInputBlur(e, link.id, 'title')}
-                              onKeyPress={(e) => handleKeyPress(e, () => updateLink(link.id, { title: (e.target as HTMLInputElement).value }))}
-                              className="w-full text-lg font-semibold border rounded px-2 py-1"
-                              placeholder="Link title"
-                            />
-                            <input
-                              type="url"
-                              defaultValue={link.url}
-                              onBlur={(e) => handleInputBlur(e, link.id, 'url')}
-                              onKeyPress={(e) => handleKeyPress(e, () => updateLink(link.id, { url: (e.target as HTMLInputElement).value }))}
-                              className="w-full text-sm border rounded px-2 py-1"
-                              placeholder="https://example.com"
-                            />
-                          </div>
-                        ) : (
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900 truncate">{link.title}</h3>
-                            <p className="text-sm text-gray-500 truncate">{link.url}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 ml-2">
-                      <button
-                        onClick={() => setEditingItem(editingItem === link.id ? null : link.id)}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4 text-gray-500" />
-                      </button>
-                      <button
-                        onClick={() => deleteLink(link.id)}
-                        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
-                    </div>
+              <div key={link.id} className="bg-white rounded-2xl border border-gray-200 p-5 transition-all hover:shadow-md hover:-translate-y-0.5">
+                <div className="flex items-start gap-4">
+                  <div className="p-2 bg-blue-100 rounded-xl">
+                    {link.favicon ? (
+                      <img 
+                        src={link.favicon} 
+                        alt="Site icon" 
+                        className="w-5 h-5"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = getFaviconUrl(link.url);
+                        }}
+                      />
+                    ) : (
+                      <img 
+                        src={getFaviconUrl(link.url)} 
+                        alt="Site icon" 
+                        className="w-5 h-5"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                    )}
                   </div>
                   
-                  <div className="flex space-x-2">
+                  <div className="flex-1">
+                    {editingItem === link.id ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          defaultValue={link.title}
+                          onBlur={(e) => handleInputBlur(e, link.id, 'title')}
+                          onKeyPress={(e) => handleKeyPress(e, () => updateLink(link.id, { title: (e.target as HTMLInputElement).value }))}
+                          className="w-full text-base font-semibold border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Link title"
+                        />
+                        <input
+                          type="url"
+                          defaultValue={link.url}
+                          onBlur={(e) => handleInputBlur(e, link.id, 'url')}
+                          onKeyPress={(e) => handleKeyPress(e, () => updateLink(link.id, { url: (e.target as HTMLInputElement).value }))}
+                          className="w-full text-sm border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="https://example.com"
+                        />
+                        <textarea
+                          defaultValue={link.description || ''}
+                          onBlur={(e) => handleInputBlur(e, link.id, 'description')}
+                          onKeyPress={(e) => handleKeyPress(e, () => updateLink(link.id, { description: (e.target as HTMLTextAreaElement).value }))}
+                          className="w-full text-sm border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          rows={3}
+                          placeholder="Description (optional)"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 className="text-base font-semibold text-gray-900 mb-1">
+                          {link.title}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-1">
+                          {getDisplayUrl(link.url)}
+                        </p>
+                        {link.description && (
+                          <p className="text-sm text-gray-600 line-clamp-3">
+                            {link.description}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 items-end">
                     <button
-                      onClick={() => window.open(link.url, '_blank')}
-                      className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                      onClick={() => setEditingItem(editingItem === link.id ? null : link.id)}
+                      className="text-gray-500 hover:text-gray-700 transition-colors"
                     >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Open Link</span>
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteLink(link.id)}
+                      className="text-red-500 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+                
+                <div className="mt-4">
+                  <button
+                    onClick={() => window.open(link.url, '_blank')}
+                    className="inline-flex items-center justify-center gap-2 text-sm font-medium text-white bg-blue-600 px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open Link
+                  </button>
                 </div>
               </div>
             ))}
             
-            {filteredLinks.length === 0 && (
+            {filteredLinks.length === 0 && !isLoading && (
               <div className="col-span-full text-center py-12">
-                <Link2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No links yet. Add your first link!</p>
+                <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <ExternalLink className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500 text-lg mb-2">No links yet</p>
+                <p className="text-gray-400">Add your first link to get started!</p>
               </div>
             )}
           </div>
         )}
-      </div>
+      </main>
 
       {/* Create Link Modal */}
       {showLinkModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h2 className="text-xl font-semibold mb-4">Add New Link</h2>
             <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Link title"
-                value={linkTitle}
-                onChange={(e) => setLinkTitle(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <input
-                type="url"
-                placeholder="https://example.com"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              {linkUrl && !isValidUrl(linkUrl) && (
-                <p className="text-red-500 text-sm">Please enter a valid URL</p>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Link title"
+                  value={linkTitle}
+                  onChange={(e) => setLinkTitle(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  URL *
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://example.com"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {linkUrl && !isValidUrl(linkUrl) && (
+                  <p className="text-red-500 text-sm mt-1">Please enter a valid URL</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  placeholder="Brief description of the link (optional)"
+                  value={linkDescription}
+                  onChange={(e) => setLinkDescription(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows={3}
+                />
+              </div>
             </div>
+            
             <div className="flex justify-end space-x-3 mt-6">
               <button
                 onClick={() => {
                   setShowLinkModal(false);
                   setLinkTitle('');
                   setLinkUrl('');
+                  setLinkDescription('');
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={createLink}
                 disabled={!linkTitle.trim() || !linkUrl.trim() || !isValidUrl(linkUrl)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Add Link
               </button>
@@ -464,6 +554,15 @@ export default function LinksPage() {
           </div>
         </div>
       )}
+      
+      <style jsx>{`
+        .line-clamp-3 {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
     </div>
   );
 }

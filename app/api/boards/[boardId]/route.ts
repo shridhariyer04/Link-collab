@@ -4,20 +4,23 @@ import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireBoardAccess } from "@/lib/permission";
+
 // ──────────────── GET Board (Check membership) ────────────────
 export async function GET(
   _: NextRequest,
-  context: { params: { boardId: string } }
+  context: { params: Promise<{ boardId: string }> }
 ) {
+  // Await params before accessing properties
+  const params = await context.params;
+  const boardId = params.boardId;
   
-  const boardId = context.params.boardId;
-const access = await requireBoardAccess(boardId);
+  const access = await requireBoardAccess(boardId);
 
-if (access instanceof NextResponse) {
-  return access; // early return if unauthorized
-}
+  if (access instanceof NextResponse) {
+    return access; // early return if unauthorized
+  }
 
-const { userId, role } = access; // now safe to destructure
+  const { userId, role } = access; // now safe to destructure
 
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -38,16 +41,19 @@ const { userId, role } = access; // now safe to destructure
 // ──────────────── PATCH Board (Update Name) ────────────────
 export async function PATCH(
   req: NextRequest,
-  context: { params: { boardId: string } }
+  context: { params: Promise<{ boardId: string }> }
 ) {
-  const boardId = context.params.boardId;
-const access = await requireBoardAccess(boardId);
+  // Await params before accessing properties
+  const params = await context.params;
+  const boardId = params.boardId;
+  
+  const access = await requireBoardAccess(boardId);
 
-if (access instanceof NextResponse) {
-  return access; // early return if unauthorized
-}
+  if (access instanceof NextResponse) {
+    return access; // early return if unauthorized
+  }
 
-const { userId, role } = access; // now safe to destructure
+  const { userId, role } = access; // now safe to destructure
 
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -71,18 +77,21 @@ const { userId, role } = access; // now safe to destructure
 // ──────────────── DELETE Board ────────────────
 export async function DELETE(
   _: NextRequest,
-  context: { params: { boardId: string } }
+  context: { params: Promise<{ boardId: string }> }
 ) {
-   const boardId = context.params.boardId;
-const access = await requireBoardAccess(boardId);
+  // Await params before accessing properties
+  const params = await context.params;
+  const boardId = params.boardId;
+  
+  const access = await requireBoardAccess(boardId);
 
-if (access instanceof NextResponse) {
-  return access; // early return if unauthorized
-}
+  if (access instanceof NextResponse) {
+    return access; // early return if unauthorized
+  }
 
-const { userId, role } = access; // now safe to destructure
+  const { userId, role } = access; // now safe to destructure
+  
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
 
   const member = await db.query.boardMembers.findFirst({
     where: (bm, { eq, and }) => and(eq(bm.boardId, boardId), eq(bm.userId, userId)),

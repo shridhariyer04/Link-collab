@@ -6,16 +6,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { requireBoardAccess } from "@/lib/permission";
 
-export async function GET(req: Request,context:{params:{boardId:string}}) {
-  const boardId = context.params.boardId;
- const access = await requireBoardAccess(boardId);
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ boardId: string }> }
+) {
+  // Await params before accessing properties
+  const params = await context.params;
+  const boardId = params.boardId;
+  
+  const access = await requireBoardAccess(boardId);
 
-if (access instanceof NextResponse) {
-  return access; // early return if unauthorized
-}
+  if (access instanceof NextResponse) {
+    return access; // early return if unauthorized
+  }
 
-const { userId, role } = access; 
-   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { userId, role } = access; 
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
  
   try {
     const result = await db
@@ -30,17 +36,22 @@ const { userId, role } = access;
   }
 }
 
-export async function POST(req: NextRequest, context:{params:{boardId:string} }) {
- const boardId = context.params.boardId;
- const access = await requireBoardAccess(boardId);
+export async function POST(
+  req: NextRequest, 
+  context: { params: Promise<{ boardId: string }> }
+) {
+  // Await params before accessing properties
+  const params = await context.params;
+  const boardId = params.boardId;
+  
+  const access = await requireBoardAccess(boardId);
 
-if (access instanceof NextResponse) {
-  return access; // early return if unauthorized
-}
+  if (access instanceof NextResponse) {
+    return access; // early return if unauthorized
+  }
 
-const { userId, role } = access; 
-   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
- 
+  const { userId, role } = access; 
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { name } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -48,13 +59,11 @@ const { userId, role } = access;
   const collectionId = uuidv4();
 
   try {
-    // Remove createdBy field since it doesn't exist in the schema
     await db.insert(collections).values({
       id: collectionId,
       name,
       boardId: boardId,
-      createdBy:userId
-      // Remove createdBy: userId, since column doesn't exist
+      createdBy: userId
     });
 
     return NextResponse.json({ 
