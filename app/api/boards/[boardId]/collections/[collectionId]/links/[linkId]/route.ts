@@ -3,6 +3,7 @@ import { links } from "@/lib/db/schemas";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { requireBoardAccess } from "@/lib/permission";
 
 // DELETE /api/boards/:boardId/collections/:collectionId/links/:linkId
 // DELETE /api/boards/:boardId/collections/:collectionId/links/:linkId

@@ -1,6 +1,7 @@
+// app/boards/[boardId]/collections/page.tsx
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, FolderOpen, Search, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderOpen, Search, ArrowLeft, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import io, { Socket } from 'socket.io-client';
 
@@ -23,7 +24,7 @@ interface ApiResponse<T> {
   [key: string]: T;
 }
 
-export default function CollectionsPage(){
+export default function CollectionsPage() {
   const [board, setBoard] = useState<Board | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -33,7 +34,8 @@ export default function CollectionsPage(){
   const [collectionName, setCollectionName] = useState<string>('');
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  
+  const [error, setError] = useState<string | null>(null); // Added error state
+
   const router = useRouter();
   const params = useParams();
   const boardId = params.boardId as string;
@@ -42,17 +44,14 @@ export default function CollectionsPage(){
     if (boardId) {
       fetchBoard();
       fetchCollections();
-      
+
       // Initialize socket connection
       const newSocket = io('http://localhost:4000');
       setSocket(newSocket);
 
-      // Socket connection handlers
       newSocket.on('connect', () => {
         console.log('Connected to socket server');
         setIsConnected(true);
-        
-        // Join the board room
         newSocket.emit('join-board', boardId);
       });
 
@@ -66,7 +65,6 @@ export default function CollectionsPage(){
         setIsConnected(false);
       });
 
-      // Listen for real-time updates (if you want to sync collections in real-time)
       newSocket.on('collection-added', (data: { boardId: string; collection: Collection }) => {
         if (data.boardId === boardId) {
           setCollections(prev => [...prev, data.collection]);
@@ -75,8 +73,8 @@ export default function CollectionsPage(){
 
       newSocket.on('collection-updated', (data: { boardId: string; collectionId: string; fields: Partial<Collection> }) => {
         if (data.boardId === boardId) {
-          setCollections(prev => prev.map(collection => 
-            collection.id === data.collectionId 
+          setCollections(prev => prev.map(collection =>
+            collection.id === data.collectionId
               ? { ...collection, ...data.fields }
               : collection
           ));
@@ -89,7 +87,6 @@ export default function CollectionsPage(){
         }
       });
 
-      // Cleanup on unmount
       return () => {
         newSocket.disconnect();
       };
@@ -102,49 +99,64 @@ export default function CollectionsPage(){
       if (response.ok) {
         const data = await response.json();
         setBoard(data.board);
+      } else {
+        setError(`Failed to fetch board: ${response.statusText}`);
       }
     } catch (error) {
       console.error('Error fetching board:', error);
+      setError('Network error fetching board. Please try again.');
     }
   };
 
   const fetchCollections = async (): Promise<void> => {
     setIsLoading(true);
+    setError(null); // Reset error
     try {
       const response = await fetch(`/api/boards/${boardId}/collections`);
       if (response.ok) {
         const data: ApiResponse<Collection[]> = await response.json();
         setCollections(data.collections || []);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || `Failed to fetch collections: ${response.statusText}`);
+        console.error("Failed to fetch collections:", response.status, errorData);
       }
     } catch (error) {
-      console.error('Error fetching collections:', error);
+      console.error("Error fetching collections:", error);
+      setError("Network error fetching collections. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const createCollection = async (): Promise<void> => {
-    if (!collectionName.trim()) return;
-    
+    if (!collectionName.trim()) {
+      setError("Collection name cannot be empty");
+      return;
+    }
+
     try {
       const response = await fetch(`/api/boards/${boardId}/collections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: collectionName })
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         await fetchCollections();
         setCollectionName('');
         setShowCollectionModal(false);
-        
-        // Emit collection creation event (optional - if you want to sync collection creation)
         if (socket && isConnected) {
           socket.emit('collection-created', { boardId, collection: data.collection });
         }
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to create collection");
       }
     } catch (error) {
       console.error('Error creating collection:', error);
+      setError("Network error creating collection. Please try again.");
     }
   };
 
@@ -155,43 +167,47 @@ export default function CollectionsPage(){
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name })
       });
-      
+
       if (response.ok) {
         await fetchCollections();
         setEditingItem(null);
-        
-        // Emit collection update event (optional)
         if (socket && isConnected) {
           socket.emit('collection-updated', { boardId, collectionId, fields: { name } });
         }
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to update collection");
       }
     } catch (error) {
       console.error('Error updating collection:', error);
+      setError("Network error updating collection. Please try again.");
     }
   };
 
   const deleteCollection = async (collectionId: string): Promise<void> => {
     if (!confirm('Are you sure you want to delete this collection?')) return;
-    
+
     try {
       const response = await fetch(`/api/boards/${boardId}/collections/${collectionId}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         await fetchCollections();
-        
-        // Emit collection deletion event (optional)
         if (socket && isConnected) {
           socket.emit('collection-deleted', { boardId, collectionId });
         }
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to delete collection");
       }
     } catch (error) {
       console.error('Error deleting collection:', error);
+      setError("Network error deleting collection. Please try again.");
     }
   };
 
-  const filteredCollections = collections.filter(collection => 
+  const filteredCollections = collections.filter(collection =>
     collection.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -224,7 +240,6 @@ export default function CollectionsPage(){
                 </h1>
                 <p className="text-sm text-gray-500">Board Collections</p>
               </div>
-              {/* Connection Status Indicator */}
               <div className="flex items-center space-x-2">
                 {isConnected ? (
                   <div className="flex items-center space-x-1 text-green-600">
@@ -239,7 +254,6 @@ export default function CollectionsPage(){
                 )}
               </div>
             </div>
-            
             <div className="flex items-center space-x-3">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -251,7 +265,6 @@ export default function CollectionsPage(){
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              
               <button
                 onClick={() => setShowCollectionModal(true)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
@@ -263,6 +276,16 @@ export default function CollectionsPage(){
           </div>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="p-3 rounded-lg flex items-start space-x-2 bg-red-50 border border-red-200">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+            <span className="text-sm text-red-800">{error}</span>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -296,7 +319,6 @@ export default function CollectionsPage(){
                         <p className="text-sm text-gray-500">Collection</p>
                       </div>
                     </div>
-                    
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setEditingItem(collection.id)}
@@ -312,7 +334,6 @@ export default function CollectionsPage(){
                       </button>
                     </div>
                   </div>
-                  
                   <button
                     onClick={() => router.push(`/boards/${boardId}/collections/${collection.id}/links`)}
                     className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-4 rounded-lg transition-colors"
@@ -322,7 +343,6 @@ export default function CollectionsPage(){
                 </div>
               </div>
             ))}
-            
             {filteredCollections.length === 0 && (
               <div className="col-span-full text-center py-12">
                 <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -365,4 +385,4 @@ export default function CollectionsPage(){
       )}
     </div>
   );
-};
+}

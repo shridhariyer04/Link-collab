@@ -4,14 +4,19 @@ import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import { requireBoardAccess } from "@/lib/permission";
 
 export async function GET(req: Request,context:{params:{boardId:string}}) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const boardId = context.params.boardId;
+ const access = await requireBoardAccess(boardId);
 
-  // Await params before using
-  const boardId = context.params.boardId
+if (access instanceof NextResponse) {
+  return access; // early return if unauthorized
+}
 
+const { userId, role } = access; 
+   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+ 
   try {
     const result = await db
       .select()
@@ -25,12 +30,17 @@ export async function GET(req: Request,context:{params:{boardId:string}}) {
   }
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ boardId: string }> }) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function POST(req: NextRequest, context:{params:{boardId:string} }) {
+ const boardId = context.params.boardId;
+ const access = await requireBoardAccess(boardId);
 
-  // Await params before using
-  const { boardId } = await params;
+if (access instanceof NextResponse) {
+  return access; // early return if unauthorized
+}
+
+const { userId, role } = access; 
+   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+ 
 
   const { name } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });

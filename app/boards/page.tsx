@@ -1,14 +1,17 @@
 "use client"
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, FolderOpen, Search, Wifi, WifiOff } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Edit2, Trash2, FolderOpen, Search, Wifi, WifiOff, MoreVertical, UserPlus, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import io, { Socket } from 'socket.io-client';
+import InviteMemberForm from '@/components/invite/InviteMemberForm';
+import { useUser } from '@clerk/nextjs';
 
 interface Board {
   id: string;
   name: string;
   createdBy: string;
   createdAt?: string;
+  role?: string; // Add this to track user's role in the board
 }
 
 interface ApiResponse<T> {
@@ -20,12 +23,42 @@ const BoardsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showBoardModal, setShowBoardModal] = useState<boolean>(false);
+  const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [selectedBoardForInvite, setSelectedBoardForInvite] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [boardName, setBoardName] = useState<string>('');
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   
   const router = useRouter();
+  const { user } = useUser();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Debug user information
+  useEffect(() => {
+    if (user) {
+      console.log('Current user:', {
+        id: user.id,
+        email: user.primaryEmailAddress?.emailAddress,
+        fullName: user.fullName
+      });
+    }
+  }, [user]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     fetchBoards();
@@ -62,7 +95,19 @@ const BoardsPage: React.FC = () => {
       const response = await fetch('/api/boards');
       if (response.ok) {
         const data: ApiResponse<Board[]> = await response.json();
-        setBoards(data.boards || []);
+        const boardsData = data.boards || [];
+        
+        // Debug boards data
+        console.log('Fetched boards:', boardsData);
+        boardsData.forEach(board => {
+          console.log(`Board "${board.name}":`, {
+            id: board.id,
+            createdBy: board.createdBy,
+            isOwner: user ? board.createdBy === user.id : false
+          });
+        });
+        
+        setBoards(boardsData);
       }
     } catch (error) {
       console.error('Error fetching boards:', error);
@@ -139,6 +184,18 @@ const BoardsPage: React.FC = () => {
     }
   };
 
+  const handleInviteClick = (boardId: string) => {
+    console.log('Invite clicked for board:', boardId);
+    setSelectedBoardForInvite(boardId);
+    setShowInviteModal(true);
+    setActiveDropdown(null);
+  };
+
+  const handleDropdownToggle = (boardId: string) => {
+    console.log('Dropdown toggled for board:', boardId);
+    setActiveDropdown(activeDropdown === boardId ? null : boardId);
+  };
+
   const filteredBoards = boards.filter(board => 
     board.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -151,6 +208,30 @@ const BoardsPage: React.FC = () => {
 
   const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>, action: (value: string) => void): void => {
     action(e.target.value);
+  };
+
+  // Improved owner check function
+  const isOwner = (board: Board) => {
+    if (!user) return false;
+    
+    const isOwnerResult = board.createdBy === user.id;
+    console.log(`Owner check for board "${board.name}":`, {
+      boardCreatedBy: board.createdBy,
+      userId: user.id,
+      isOwner: isOwnerResult
+    });
+    
+    return isOwnerResult;
+  };
+
+  // Alternative: Check if user has owner role (if you're storing roles)
+  const hasOwnerRole = (board: Board) => {
+    return board.role === 'owner';
+  };
+
+  // Use this function to determine if invite button should show
+  const canInviteMembers = (board: Board) => {
+    return isOwner(board) || hasOwnerRole(board);
   };
 
   return (
@@ -230,7 +311,9 @@ const BoardsPage: React.FC = () => {
                         ) : (
                           <h3 className="text-lg font-semibold text-gray-900">{board.name}</h3>
                         )}
-                        <p className="text-sm text-gray-500">Board</p>
+                        <p className="text-sm text-gray-500">
+                          {canInviteMembers(board) ? 'Owner' : 'Member'}
+                        </p>
                       </div>
                     </div>
                     
@@ -247,6 +330,46 @@ const BoardsPage: React.FC = () => {
                       >
                         <Trash2 className="w-4 h-4 text-red-600" />
                       </button>
+                      
+                      {/* 3-Dot Menu */}
+                      <div className="relative" ref={dropdownRef}>
+                        <button
+                          onClick={() => handleDropdownToggle(board.id)}
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <MoreVertical className="w-4 h-4 text-gray-500" />
+                        </button>
+                        
+                        {activeDropdown === board.id && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-10">
+                            <div className="py-1">
+                              {/* Always show invite button for testing - remove this condition after debugging */}
+                              <button
+                                onClick={() => handleInviteClick(board.id)}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <UserPlus className="w-4 h-4 mr-2" />
+                                Invite Members
+                                {!canInviteMembers(board) && (
+                                  <span className="ml-2 text-xs text-gray-500">(Test)</span>
+                                )}
+                              </button>
+                              
+                              <button
+                                onClick={() => {
+                                  // Add view members functionality here
+                                  console.log('View members for board:', board.id);
+                                  setActiveDropdown(null);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <Users className="w-4 h-4 mr-2" />
+                                View Members
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
@@ -295,6 +418,46 @@ const BoardsPage: React.FC = () => {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Members Modal */}
+      {showInviteModal && selectedBoardForInvite && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Invite Members</h2>
+              <button
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setSelectedBoardForInvite(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <InviteMemberForm 
+              boardId={selectedBoardForInvite}
+              onSuccess={() => {
+                setShowInviteModal(false);
+                setSelectedBoardForInvite(null);
+              }}
+            />
+            
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setSelectedBoardForInvite(null);
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Close
               </button>
             </div>
           </div>

@@ -1,74 +1,105 @@
+// app/api/boards/[boardId]/collections/[collectionId]/route.ts
 import { db } from "@/lib/db";
 import { collections } from "@/lib/db/schemas";
-import { auth } from "@clerk/nextjs/server";
-import { NextResponse, NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { eq, and } from "drizzle-orm";
+import { requireBoardAccess } from "@/lib/permission";
 
-// ──────────────── GET Collection ────────────────
 export async function GET(
   _: NextRequest,
-  context: { params: { boardId: string; collectionId: string } }
+  { params }: { params: { boardId: string; collectionId: string } }
 ) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { boardId, collectionId } = context.params;
-
   try {
-    const result = await db.query.collections.findFirst({
-      where: (c, { and, eq }) =>
-        and(eq(c.id, collectionId), eq(c.boardId, boardId)),
+    const access = await requireBoardAccess(params.boardId);
+    if (access instanceof NextResponse) {
+      return access;
+    }
+
+    const { collectionId } = params;
+
+    const collection = await db.query.collections.findFirst({
+      where: and(eq(collections.id, collectionId), eq(collections.boardId, params.boardId)),
     });
 
-    return NextResponse.json({ collection: result });
+    if (!collection) {
+      return NextResponse.json({ error: "Collection not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ collection });
   } catch (error) {
     console.error("Error fetching collection:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
-// ──────────────── PATCH Collection ────────────────
 export async function PATCH(
   req: NextRequest,
-  context: { params: { boardId: string; collectionId: string } }
+  { params }: { params: { boardId: string; collectionId: string } }
 ) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { boardId, collectionId } = context.params;
-  const { name } = await req.json();
-
   try {
-    await db
+    const access = await requireBoardAccess(params.boardId);
+    if (access instanceof NextResponse) {
+      return access;
+    }
+
+    const { role } = access;
+    if (role !== "owner" && role !== "editor") {
+      return NextResponse.json({ error: "Forbidden: Only owners or editors can update collections" }, { status: 403 });
+    }
+
+    const { collectionId } = params;
+    const { name } = await req.json();
+
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return NextResponse.json({ error: "Invalid or missing collection name" }, { status: 400 });
+    }
+
+    const [updatedCollection] = await db
       .update(collections)
       .set({ name })
-      .where(and(eq(collections.id, collectionId), eq(collections.boardId, boardId)));
+      .where(and(eq(collections.id, collectionId), eq(collections.boardId, params.boardId)))
+      .returning();
 
-    return NextResponse.json({ success: true });
+    if (!updatedCollection) {
+      return NextResponse.json({ error: "Collection not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ collection: updatedCollection });
   } catch (error) {
     console.error("Error updating collection:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
-// ──────────────── DELETE Collection ────────────────
 export async function DELETE(
   _: NextRequest,
-  context: { params: { boardId: string; collectionId: string } }
+  { params }: { params: { boardId: string; collectionId: string } }
 ) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { boardId, collectionId } = context.params;
-
   try {
-    await db
+    const access = await requireBoardAccess(params.boardId);
+    if (access instanceof NextResponse) {
+      return access;
+    }
+
+    const { role } = access;
+    if (role !== "owner" && role !== "editor") {
+      return NextResponse.json({ error: "Forbidden: Only owners or editors can delete collections" }, { status: 403 });
+    }
+
+    const { collectionId } = params;
+
+    const [deletedCollection] = await db
       .delete(collections)
-      .where(and(eq(collections.id, collectionId), eq(collections.boardId, boardId)));
+      .where(and(eq(collections.id, collectionId), eq(collections.boardId, params.boardId)))
+      .returning();
+
+    if (!deletedCollection) {
+      return NextResponse.json({ error: "Collection not found" }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting collection:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
