@@ -4,7 +4,7 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface EmailOptions {
-  to: string;
+   to: string;
   subject: string;
   react: React.ReactElement;
 }
@@ -25,14 +25,19 @@ export async function sendEmail({ to, subject, react }: EmailOptions) {
     console.log('Sending email to:', to);
     console.log('Subject:', subject);
 
+    const from = process.env.RESEND_FROM_EMAIL;
+    if (!from) {
+  throw new Error("RESEND_FROM_EMAIL environment variable is not set");
+}
+
     const result = await resend.emails.send({
-      from: "Link Organizer <onboarding@resend.dev>", // Use the default Resend domain for testing
+     from,
       to,
       subject,
       react,
     });
 
-    console.log('Email sent successfully:', result);
+    console.log('Email sent successfully:', from);
     return result;
 
   } catch (error) {
