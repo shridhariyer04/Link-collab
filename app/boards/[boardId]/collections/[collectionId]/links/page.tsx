@@ -61,7 +61,9 @@ export default function LinksPage() {
       fetchLinks();
       
       // Initialize socket connection
-      const newSocket = io('http://localhost:4000');
+     const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
+       transports: ["websocket"],
+     });
       setSocket(newSocket);
 
       // Socket connection handlers

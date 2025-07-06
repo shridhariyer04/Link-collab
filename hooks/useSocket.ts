@@ -27,7 +27,9 @@ export const useSocket = (options: UseSocketOptions = {}) => {
 
   useEffect(() => {
     // Initialize socket connection
-    const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000');
+   const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
+  transports: ["websocket"],
+});
     setSocket(newSocket);
 
     // Connection event handlers

@@ -64,7 +64,7 @@ const BoardsPage: React.FC = () => {
     fetchBoards();
     
     // Initialize socket connection
-    const newSocket = io('http://localhost:4000');
+    const newSocket = io('https://socket-render-slh2.onrender.com');
     setSocket(newSocket);
 
     // Socket connection handlers
