@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, ExternalLink, Search, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Edit2, Trash2, ExternalLink, Search, ArrowLeft, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 
@@ -47,6 +47,7 @@ export default function LinksPage() {
   const [linkDescription, setLinkDescription] = useState<string>('');
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   
   const router = useRouter();
   const params = useParams();
@@ -118,9 +119,12 @@ export default function LinksPage() {
       if (response.ok) {
         const data = await response.json();
         setBoard(data.board);
+      } else {
+        setError(`Failed to fetch board: ${response.statusText}`);
       }
     } catch (error) {
       console.error('Error fetching board:', error);
+      setError('Network error fetching board. Please try again.');
     }
   };
 
@@ -130,14 +134,18 @@ export default function LinksPage() {
       if (response.ok) {
         const data = await response.json();
         setCollection(data.collection);
+      } else {
+        setError(`Failed to fetch collection: ${response.statusText}`);
       }
     } catch (error) {
       console.error('Error fetching collection:', error);
+      setError('Network error fetching collection. Please try again.');
     }
   };
 
   const fetchLinks = async (): Promise<void> => {
     setIsLoading(true);
+    setError(null);
     try {
       const response = await fetch(`/api/boards/${boardId}/collections/${collectionId}/links`);
       if (response.ok) {
@@ -145,15 +153,22 @@ export default function LinksPage() {
         console.log('API Response:', data);
         console.log('Links array:', data.links);
         setLinks(data.links || []);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || `Failed to fetch links: ${response.statusText}`);
       }
     } catch (error) {
       console.error('Error fetching links:', error);
+      setError('Network error fetching links. Please try again.');
     }
     setIsLoading(false);
   };
 
   const createLink = async (): Promise<void> => {
-    if (!linkTitle.trim() || !linkUrl.trim()) return;
+    if (!linkTitle.trim() || !linkUrl.trim()) {
+      setError("Link title and URL are required");
+      return;
+    }
     
     try {
       const response = await fetch(`/api/boards/${boardId}/collections/${collectionId}/links`, {
@@ -176,6 +191,7 @@ export default function LinksPage() {
         setLinkUrl('');
         setLinkDescription('');
         setShowLinkModal(false);
+        setError(null);
         
         // Emit link creation event for real-time sync
         if (socket && isConnected) {
@@ -185,9 +201,13 @@ export default function LinksPage() {
             link: newLink
           });
         }
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to create link");
       }
     } catch (error) {
       console.error('Error creating link:', error);
+      setError("Network error creating link. Please try again.");
     }
   };
 
@@ -218,9 +238,13 @@ export default function LinksPage() {
             });
           }
         }
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to update link");
       }
     } catch (error) {
       console.error('Error updating link:', error);
+      setError("Network error updating link. Please try again.");
     }
   };
 
@@ -244,9 +268,13 @@ export default function LinksPage() {
             linkId
           });
         }
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to delete link");
       }
     } catch (error) {
       console.error('Error deleting link:', error);
+      setError("Network error deleting link. Please try again.");
     }
   };
 
@@ -301,78 +329,74 @@ export default function LinksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-      {/* Header */}
-      <header className="bg-white border-b shadow-sm">
-        <div className="max-w-5xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push(`/boards/${boardId}/collections`)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  {collection?.name || 'My Collection'}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {filteredLinks.length} curated links
-                </p>
-              </div>
-              {/* Connection Status Indicator */}
-              <div className="flex items-center space-x-2">
-                {isConnected ? (
-                  <div className="flex items-center space-x-1 text-green-600">
-                    <Wifi className="w-4 h-4" />
-                    <span className="text-xs">Live</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-1 text-red-600">
-                    <WifiOff className="w-4 h-4" />
-                    <span className="text-xs">Offline</span>
-                  </div>
-                )}
-              </div>
+    <div className="min-h-screen bg-gray-950 text-white">
+      {/* Page Header */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => router.push(`/boards/${boardId}/collections`)}
+              className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-semibold text-white">
+                {collection?.name || 'Links'}
+              </h1>
+              <p className="text-sm text-gray-400">
+                {filteredLinks.length} curated links
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
+              <span className="text-sm text-gray-400">
+                {isConnected ? 'Online' : 'Offline Mode'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search links..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-white placeholder-gray-400"
+              />
             </div>
             
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search links..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              <button
-                onClick={() => setShowLinkModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add</span>
-              </button>
-            </div>
+            <button
+              onClick={() => setShowLinkModal(true)}
+              className="bg-violet-600 text-white px-4 py-2 rounded-lg hover:bg-violet-700 transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Link
+            </button>
           </div>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-6 py-8">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-3 rounded-lg flex items-start gap-2 bg-red-900/20 border border-red-800">
+            <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
+            <span className="text-sm text-red-300">{error}</span>
+          </div>
+        )}
+
+        {/* Links Grid */}
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredLinks.map((link) => (
-              <div key={link.id} className="bg-white rounded-2xl border border-gray-200 p-5 transition-all hover:shadow-md hover:-translate-y-0.5">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-blue-100 rounded-xl">
+              <div key={link.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:shadow-lg hover:bg-gray-800 transition-all">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="p-2 bg-blue-900/30 rounded-xl">
                     {link.favicon ? (
                       <img 
                         src={link.favicon} 
@@ -404,7 +428,7 @@ export default function LinksPage() {
                           defaultValue={link.title}
                           onBlur={(e) => handleInputBlur(e, link.id, 'title')}
                           onKeyPress={(e) => handleKeyPress(e, () => updateLink(link.id, { title: (e.target as HTMLInputElement).value }))}
-                          className="w-full text-base font-semibold border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full text-base font-semibold bg-gray-800 border border-gray-700 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-violet-500 text-white"
                           placeholder="Link title"
                         />
                         <input
@@ -412,28 +436,28 @@ export default function LinksPage() {
                           defaultValue={link.url}
                           onBlur={(e) => handleInputBlur(e, link.id, 'url')}
                           onKeyPress={(e) => handleKeyPress(e, () => updateLink(link.id, { url: (e.target as HTMLInputElement).value }))}
-                          className="w-full text-sm border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full text-sm bg-gray-800 border border-gray-700 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-violet-500 text-white"
                           placeholder="https://example.com"
                         />
                         <textarea
                           defaultValue={link.description || ''}
                           onBlur={(e) => handleInputBlur(e, link.id, 'description')}
                           onKeyPress={(e) => handleKeyPress(e, () => updateLink(link.id, { description: (e.target as HTMLTextAreaElement).value }))}
-                          className="w-full text-sm border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          className="w-full text-sm bg-gray-800 border border-gray-700 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none text-white"
                           rows={3}
                           placeholder="Description (optional)"
                         />
                       </div>
                     ) : (
                       <div>
-                        <h3 className="text-base font-semibold text-gray-900 mb-1">
+                        <h3 className="text-base font-semibold text-white mb-1 line-clamp-2">
                           {link.title}
                         </h3>
-                        <p className="text-sm text-gray-500 mb-1">
+                        <p className="text-sm text-gray-400 mb-2">
                           {getDisplayUrl(link.url)}
                         </p>
                         {link.description && (
-                          <p className="text-sm text-gray-600 line-clamp-3">
+                          <p className="text-sm text-gray-300 line-clamp-3">
                             {link.description}
                           </p>
                         )}
@@ -441,55 +465,54 @@ export default function LinksPage() {
                     )}
                   </div>
                   
-                  <div className="flex flex-col gap-2 items-end">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => setEditingItem(editingItem === link.id ? null : link.id)}
-                      className="text-gray-500 hover:text-gray-700 transition-colors"
+                      className="p-1 hover:bg-gray-700 rounded transition-colors text-gray-400 hover:text-white"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => deleteLink(link.id)}
-                      className="text-red-500 hover:text-red-600 transition-colors"
+                      className="p-1 hover:bg-gray-700 rounded transition-colors text-gray-400 hover:text-red-400"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
                 
-                <div className="mt-4">
-                  <button
-                    onClick={() => window.open(link.url, '_blank')}
-                    className="inline-flex items-center justify-center gap-2 text-sm font-medium text-white bg-blue-600 px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200 transform hover:scale-105"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Open Link
-                  </button>
+                <div className="text-xs text-gray-400 mb-4">
+                  Link
                 </div>
+                
+                <button
+                  onClick={() => window.open(link.url, '_blank')}
+                  className="w-full py-2 text-sm font-medium bg-gray-700 hover:bg-gray-600 rounded-md text-white transition-colors flex items-center justify-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open Link
+                </button>
               </div>
             ))}
             
             {filteredLinks.length === 0 && !isLoading && (
               <div className="col-span-full text-center py-12">
-                <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <ExternalLink className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-gray-500 text-lg mb-2">No links yet</p>
-                <p className="text-gray-400">Add your first link to get started!</p>
+                <ExternalLink className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400">No links yet. Add your first link!</p>
               </div>
             )}
           </div>
         )}
-      </main>
+      </div>
 
       {/* Create Link Modal */}
       {showLinkModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-semibold mb-4">Add New Link</h2>
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4 text-white">Add New Link</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Title *
                 </label>
                 <input
@@ -497,12 +520,12 @@ export default function LinksPage() {
                   placeholder="Link title"
                   value={linkTitle}
                   onChange={(e) => setLinkTitle(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-white placeholder-gray-400"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   URL *
                 </label>
                 <input
@@ -510,43 +533,44 @@ export default function LinksPage() {
                   placeholder="https://example.com"
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-white placeholder-gray-400"
                 />
                 {linkUrl && !isValidUrl(linkUrl) && (
-                  <p className="text-red-500 text-sm mt-1">Please enter a valid URL</p>
+                  <p className="text-red-400 text-sm mt-1">Please enter a valid URL</p>
                 )}
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Description
                 </label>
                 <textarea
                   placeholder="Brief description of the link (optional)"
                   value={linkDescription}
                   onChange={(e) => setLinkDescription(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none text-white placeholder-gray-400"
                   rows={3}
                 />
               </div>
             </div>
             
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => {
                   setShowLinkModal(false);
                   setLinkTitle('');
                   setLinkUrl('');
                   setLinkDescription('');
+                  setError(null);
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={createLink}
                 disabled={!linkTitle.trim() || !linkUrl.trim() || !isValidUrl(linkUrl)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Add Link
               </button>
@@ -556,6 +580,12 @@ export default function LinksPage() {
       )}
       
       <style jsx>{`
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
         .line-clamp-3 {
           display: -webkit-box;
           -webkit-line-clamp: 3;

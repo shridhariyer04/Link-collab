@@ -1,20 +1,36 @@
+// app/api/boards/[boardId]/collections/[collectionId]/links/[linkId]/route.ts
+
 import { db } from "@/lib/db";
 import { links } from "@/lib/db/schemas";
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { requireBoardAccess } from "@/lib/permission";
 
-// DELETE /api/boards/:boardId/collections/:collectionId/links/:linkId
-// DELETE /api/boards/:boardId/collections/:collectionId/links/:linkId
-// DELETE from inside links/route.ts
-export async function DELETE(req: Request, { params }: { params: { collectionId: string } }) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+// Updated for Next.js 15 - params is now a Promise
+export async function DELETE(
+  req: NextRequest,
+  context: {
+    params: Promise<{
+      boardId: string;
+      collectionId: string;
+      linkId: string;
+    }>;
+  }
+) {
+  // Await the params Promise
+  const { boardId, collectionId, linkId } = await context.params;
 
-  const { searchParams } = new URL(req.url);
-  const linkId = searchParams.get("linkId");
-  if (!linkId) return NextResponse.json({ error: "Missing linkId" }, { status: 400 });
+  const access = await requireBoardAccess(boardId);
+  if (access instanceof NextResponse) {
+    return access;
+  }
+
+  const { userId } = access;
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     await db.delete(links).where(eq(links.id, linkId));

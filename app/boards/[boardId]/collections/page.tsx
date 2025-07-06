@@ -34,7 +34,7 @@ export default function CollectionsPage() {
   const [collectionName, setCollectionName] = useState<string>('');
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null); // Added error state
+  const [error, setError] = useState<string | null>(null);
 
   const router = useRouter();
   const params = useParams();
@@ -110,7 +110,7 @@ export default function CollectionsPage() {
 
   const fetchCollections = async (): Promise<void> => {
     setIsLoading(true);
-    setError(null); // Reset error
+    setError(null);
     try {
       const response = await fetch(`/api/boards/${boardId}/collections`);
       if (response.ok) {
@@ -222,131 +222,122 @@ export default function CollectionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push('/boards')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {board?.name || 'Collections'}
-                </h1>
-                <p className="text-sm text-gray-500">Board Collections</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                {isConnected ? (
-                  <div className="flex items-center space-x-1 text-green-600">
-                    <Wifi className="w-4 h-4" />
-                    <span className="text-xs">Connected</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-1 text-red-600">
-                    <WifiOff className="w-4 h-4" />
-                    <span className="text-xs">Disconnected</span>
-                  </div>
-                )}
-              </div>
+    <div className="min-h-screen bg-gray-950 text-white">
+      {/* Page Header */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => router.push('/boards')}
+              className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-semibold text-white">
+                {board?.name || 'Collections'}
+              </h1>
+              <p className="text-sm text-gray-400">Collections in this board</p>
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search collections..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <button
-                onClick={() => setShowCollectionModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Collection</span>
-              </button>
+            <div className="flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
+              <span className="text-sm text-gray-400">
+                {isConnected ? 'Online' : 'Offline Mode'}
+              </span>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="p-3 rounded-lg flex items-start space-x-2 bg-red-50 border border-red-200">
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-            <span className="text-sm text-red-800">{error}</span>
+          
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search collections..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-white placeholder-gray-400"
+              />
+            </div>
+            
+            <button
+              onClick={() => setShowCollectionModal(true)}
+              className="bg-violet-600 text-white px-4 py-2 rounded-lg hover:bg-violet-700 transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Create Collection
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-3 rounded-lg flex items-start gap-2 bg-red-900/20 border border-red-800">
+            <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
+            <span className="text-sm text-red-300">{error}</span>
+          </div>
+        )}
+
+        {/* Collections Grid */}
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredCollections.map((collection) => (
-              <div key={collection.id} className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-shadow">
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <FolderOpen className="w-6 h-6 text-orange-600" />
-                      </div>
-                      <div>
-                        {editingItem === collection.id ? (
-                          <input
-                            type="text"
-                            defaultValue={collection.name}
-                            onBlur={(e) => handleInputBlur(e, (value) => updateCollection(collection.id, value))}
-                            onKeyPress={(e) => handleKeyPress(e, () => updateCollection(collection.id, (e.target as HTMLInputElement).value))}
-                            className="text-lg font-semibold border rounded px-2 py-1"
-                            autoFocus
-                          />
-                        ) : (
-                          <h3 className="text-lg font-semibold text-gray-900">{collection.name}</h3>
-                        )}
-                        <p className="text-sm text-gray-500">Collection</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => setEditingItem(collection.id)}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4 text-gray-500" />
-                      </button>
-                      <button
-                        onClick={() => deleteCollection(collection.id)}
-                        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
+              <div key={collection.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 hover:shadow-lg hover:bg-gray-800 transition-all">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-3">
+                    <FolderOpen className="w-8 h-8 text-blue-400" />
+                    <div>
+                      {editingItem === collection.id ? (
+                        <input
+                          type="text"
+                          defaultValue={collection.name}
+                          onBlur={(e) => handleInputBlur(e, (value) => updateCollection(collection.id, value))}
+                          onKeyPress={(e) => handleKeyPress(e, () => updateCollection(collection.id, (e.target as HTMLInputElement).value))}
+                          className="text-base font-medium bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white"
+                          autoFocus
+                        />
+                      ) : (
+                        <h2 className="font-medium text-base truncate text-white">{collection.name}</h2>
+                      )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => router.push(`/boards/${boardId}/collections/${collection.id}/links`)}
-                    className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-4 rounded-lg transition-colors"
-                  >
-                    Open Collection
-                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEditingItem(collection.id)}
+                      className="p-1 hover:bg-gray-700 rounded transition-colors text-gray-400 hover:text-white"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteCollection(collection.id)}
+                      className="p-1 hover:bg-gray-700 rounded transition-colors text-gray-400 hover:text-red-400"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
+                
+                <div className="text-xs text-gray-400 mb-4">
+                  Collection
+                </div>
+                
+                <button
+                  onClick={() => router.push(`/boards/${boardId}/collections/${collection.id}/links`)}
+                  className="w-full py-2 text-sm font-medium bg-gray-700 hover:bg-gray-600 rounded-md text-white transition-colors"
+                >
+                  Open Collection
+                </button>
               </div>
             ))}
+            
             {filteredCollections.length === 0 && (
               <div className="col-span-full text-center py-12">
-                <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No collections yet. Create your first collection!</p>
+                <FolderOpen className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400">No collections yet. Create your first collection!</p>
               </div>
             )}
           </div>
@@ -356,26 +347,26 @@ export default function CollectionsPage() {
       {/* Create Collection Modal */}
       {showCollectionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Create New Collection</h2>
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4 text-white">Create New Collection</h2>
             <input
               type="text"
               placeholder="Collection name"
               value={collectionName}
               onChange={(e) => setCollectionName(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-white placeholder-gray-400"
               onKeyPress={(e) => handleKeyPress(e, createCollection)}
             />
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowCollectionModal(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={createCollection}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
               >
                 Create
               </button>

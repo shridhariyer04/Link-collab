@@ -11,7 +11,7 @@ interface Board {
   name: string;
   createdBy: string;
   createdAt?: string;
-  role?: string; // Add this to track user's role in the board
+  role?: string;
 }
 
 interface ApiResponse<T> {
@@ -235,158 +235,135 @@ const BoardsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <h1 className="text-2xl font-bold text-gray-900">My Boards</h1>
-              {/* Connection Status Indicator */}
-              <div className="flex items-center space-x-2">
-                {isConnected ? (
-                  <div className="flex items-center space-x-1 text-green-600">
-                    <Wifi className="w-4 h-4" />
-                    <span className="text-xs">Connected</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-1 text-red-600">
-                    <WifiOff className="w-4 h-4" />
-                    <span className="text-xs">Disconnected</span>
-                  </div>
-                )}
-              </div>
+    <div className="min-h-screen bg-gray-950 text-white">
+      {/* Page Header */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-6">
+            <h1 className="text-2xl font-semibold text-white">My Boards</h1>
+            <div className="flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
+              <span className="text-sm text-gray-400">
+                {isConnected ? 'Online' : 'Offline Mode'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search boards..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-white placeholder-gray-400"
+              />
             </div>
             
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search boards..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              <button
-                onClick={() => setShowBoardModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create Board</span>
-              </button>
-            </div>
+            <button
+              onClick={() => setShowBoardModal(true)}
+              className="bg-violet-600 text-white px-4 py-2 rounded-lg hover:bg-violet-700 transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Create Board
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Boards Grid */}
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredBoards.map((board) => (
-              <div key={board.id} className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-shadow">
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <FolderOpen className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <div>
-                        {editingItem === board.id ? (
-                          <input
-                            type="text"
-                            defaultValue={board.name}
-                            onBlur={(e) => handleInputBlur(e, (value) => updateBoard(board.id, value))}
-                            onKeyPress={(e) => handleKeyPress(e, () => updateBoard(board.id, (e.target as HTMLInputElement).value))}
-                            className="text-lg font-semibold border rounded px-2 py-1"
-                            autoFocus
-                          />
-                        ) : (
-                          <h3 className="text-lg font-semibold text-gray-900">{board.name}</h3>
-                        )}
-                        <p className="text-sm text-gray-500">
-                          {canInviteMembers(board) ? 'Owner' : 'Member'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => setEditingItem(board.id)}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4 text-gray-500" />
-                      </button>
-                      <button
-                        onClick={() => deleteBoard(board.id)}
-                        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
-                      
-                      {/* 3-Dot Menu */}
-                      <div className="relative" ref={dropdownRef}>
-                        <button
-                          onClick={() => handleDropdownToggle(board.id)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                          <MoreVertical className="w-4 h-4 text-gray-500" />
-                        </button>
-                        
-                        {activeDropdown === board.id && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-10">
-                            <div className="py-1">
-                              {/* Always show invite button for testing - remove this condition after debugging */}
-                              <button
-                                onClick={() => handleInviteClick(board.id)}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <UserPlus className="w-4 h-4 mr-2" />
-                                Invite Members
-                                {!canInviteMembers(board) && (
-                                  <span className="ml-2 text-xs text-gray-500">(Test)</span>
-                                )}
-                              </button>
-                              
-                              <button
-                                onClick={() => {
-                                  // Add view members functionality here
-                                  console.log('View members for board:', board.id);
-                                  setActiveDropdown(null);
-                                }}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Users className="w-4 h-4 mr-2" />
-                                View Members
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+              <div key={board.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 hover:shadow-lg hover:bg-gray-800 transition-all">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-3">
+                    <FolderOpen className="w-8 h-8 text-blue-400" />
+                    <div>
+                      {editingItem === board.id ? (
+                        <input
+                          type="text"
+                          defaultValue={board.name}
+                          onBlur={(e) => handleInputBlur(e, (value) => updateBoard(board.id, value))}
+                          onKeyPress={(e) => handleKeyPress(e, () => updateBoard(board.id, (e.target as HTMLInputElement).value))}
+                          className="text-base font-medium bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white"
+                          autoFocus
+                        />
+                      ) : (
+                        <h2 className="font-medium text-base truncate text-white">{board.name}</h2>
+                      )}
                     </div>
                   </div>
                   
-                  <button
-                    onClick={() => router.push(`/boards/${board.id}/collections`)}
-                    className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-4 rounded-lg transition-colors"
-                  >
-                    Open Board
-                  </button>
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      onClick={() => handleDropdownToggle(board.id)}
+                      className="text-gray-500 hover:text-gray-300 p-1"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                    
+                    {activeDropdown === board.id && (
+                      <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
+                        <div className="py-1">
+                          <button
+                            onClick={() => setEditingItem(board.id)}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                          >
+                            <Edit2 className="w-4 h-4 mr-2" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleInviteClick(board.id)}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                          >
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Invite Members
+                          </button>
+                          <button
+                            onClick={() => {
+                              console.log('View members for board:', board.id);
+                              setActiveDropdown(null);
+                            }}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                          >
+                            <Users className="w-4 h-4 mr-2" />
+                            View Members
+                          </button>
+                          <button
+                            onClick={() => deleteBoard(board.id)}
+                            className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-gray-700"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
+                
+                <div className="text-xs text-gray-400 mb-4">
+                  {canInviteMembers(board) ? 'Owner' : 'Member'}
+                </div>
+                
+                <button
+                  onClick={() => router.push(`/boards/${board.id}/collections`)}
+                  className="w-full py-2 text-sm font-medium bg-gray-700 hover:bg-gray-600 rounded-md text-white transition-colors"
+                >
+                  Open Board
+                </button>
               </div>
             ))}
             
             {filteredBoards.length === 0 && (
               <div className="col-span-full text-center py-12">
-                <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No boards yet. Create your first board!</p>
+                <FolderOpen className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400">No boards yet. Create your first board!</p>
               </div>
             )}
           </div>
@@ -396,26 +373,26 @@ const BoardsPage: React.FC = () => {
       {/* Create Board Modal */}
       {showBoardModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Create New Board</h2>
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4 text-white">Create New Board</h2>
             <input
               type="text"
               placeholder="Board name"
               value={boardName}
               onChange={(e) => setBoardName(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-white placeholder-gray-400"
               onKeyPress={(e) => handleKeyPress(e, createBoard)}
             />
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowBoardModal(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={createBoard}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
               >
                 Create
               </button>
@@ -427,15 +404,15 @@ const BoardsPage: React.FC = () => {
       {/* Invite Members Modal */}
       {showInviteModal && selectedBoardForInvite && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Invite Members</h2>
+              <h2 className="text-xl font-semibold text-white">Invite Members</h2>
               <button
                 onClick={() => {
                   setShowInviteModal(false);
                   setSelectedBoardForInvite(null);
                 }}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
+                className="text-gray-400 hover:text-white text-2xl"
               >
                 ×
               </button>
@@ -455,7 +432,7 @@ const BoardsPage: React.FC = () => {
                   setShowInviteModal(false);
                   setSelectedBoardForInvite(null);
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
               >
                 Close
               </button>
