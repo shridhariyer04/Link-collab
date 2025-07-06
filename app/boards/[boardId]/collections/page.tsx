@@ -46,7 +46,9 @@ export default function CollectionsPage() {
       fetchCollections();
 
       // Initialize socket connection
-      const newSocket = io('https://socket-render-slh2.onrender.com');
+      const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
+  transports: ["websocket"],
+});
       setSocket(newSocket);
 
       newSocket.on('connect', () => {

@@ -64,7 +64,13 @@ const BoardsPage: React.FC = () => {
     fetchBoards();
     
     // Initialize socket connection
-    const newSocket = io('https://socket-render-slh2.onrender.com');
+  
+
+// 👇 Pulling from .env
+const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
+  transports: ["websocket"],
+});
+
     setSocket(newSocket);
 
     // Socket connection handlers
