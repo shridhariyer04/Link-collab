@@ -22,22 +22,32 @@ export async function sendEmail({ to, subject, react }: EmailOptions) {
       throw new Error("Invalid email address");
     }
 
-    console.log('Sending email to:', to);
-    console.log('Subject:', subject);
-
     const from = process.env.RESEND_FROM_EMAIL;
     if (!from) {
-  throw new Error("RESEND_FROM_EMAIL environment variable is not set");
-}
+      throw new Error("RESEND_FROM_EMAIL environment variable is not set");
+    }
+
+    console.log('Sending email with config:', {
+      from,
+      to,
+      subject,
+      apiKeySet: !!process.env.RESEND_API_KEY
+    });
 
     const result = await resend.emails.send({
-     from,
+      from,
       to,
       subject,
       react,
     });
 
-    console.log('Email sent successfully:', from);
+    console.log('Email sent successfully:', {
+      id: result.data?.id,
+      from,
+      to,
+      subject
+    });
+    
     return result;
 
   } catch (error) {
@@ -54,6 +64,7 @@ export async function sendEmail({ to, subject, react }: EmailOptions) {
 }
 
 // Test email function for debugging
+// Update your test function
 export async function testEmail() {
   try {
     if (!process.env.RESEND_API_KEY) {
@@ -62,8 +73,8 @@ export async function testEmail() {
     }
 
     const result = await resend.emails.send({
-      from: "Link Organizer <onboarding@resend.dev>",
-      to: "test@example.com", // Replace with your email for testing
+      from: process.env.RESEND_FROM_EMAIL || "Link Organizer <team@linkcollab.in>",
+      to: "your-actual-email@gmail.com", // Use your real email
       subject: "Test Email",
       html: "<h1>Test Email</h1><p>This is a test email to verify Resend configuration.</p>",
     });
