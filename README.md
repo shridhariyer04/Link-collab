@@ -1,36 +1,142 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧠 Link Collab
 
-## Getting Started
+**Link Collab** is a full-stack collaborative link management tool that combines the simplicity of Linktree, the structure of Notion, and the real-time collaboration of Google Docs.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🌐 Live Demo
+
+[www.linkcollab.sbs](https://www.linkcollab.sbs)
+
+---
+
+## 🚀 Features
+
+- ✅ Auth via Clerk (Sign in / Sign up / User Profile)
+- ✅ Create & manage boards
+- ✅ Add collections and links inside boards
+- ✅ Real-time collaboration with **Socket.IO**
+- ✅ Invite members via email (powered by **Resend**)
+- ✅ Role-based access: `owner`, `editor`, `viewer`
+- ✅ Clean and modern UI using **TailwindCSS**
+- ✅ Deployed via **Resend**, **Render**, and **GitHub**
+
+---
+
+## 📁 Tech Stack
+
+| Frontend       | Backend           | Realtime       | Database     | Deployment    |
+|----------------|------------------|----------------|--------------|---------------|
+| Next.js 14     | Next.js API Routes | Socket.IO       | PostgreSQL + Drizzle ORM | Resend (email)<br>Render (Socket server)<br>Vercel/Resend (Frontend) |
+
+---
+
+## ⚙️ Environment Variables
+
+Create a `.env` file with the following:
+
+```env
+# Clerk
+CLERK_PUBLISHABLE_KEY=...
+CLERK_SECRET_KEY=...
+
+# Database
+DATABASE_URL=...
+
+# Resend
+RESEND_API_KEY=...
+RESEND_FROM_EMAIL="Link Collab <team@linkcollab.in>"
+
+# App
+NEXT_PUBLIC_APP_URL=https://www.linkcollab.sbs
+
+# Socket
+NEXT_PUBLIC_SOCKET_URL=https://your-socket-server.onrender.com
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🧠 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+.
+├── app/                      # Next.js app directory
+│   ├── api/                 # API routes (boards, links, etc.)
+│   ├── (routes)/onboard/    # Onboarding after invite
+│   └── page.tsx             # Home page (Boards list)
+├── lib/                     # DB, utils, email helpers
+│   ├── db.ts                # Drizzle + schema
+│   ├── permission.ts        # Role check logic
+│   └── email.ts             # Resend email logic
+├── socket-server/           # Standalone Socket.IO server
+│   └── index.ts             # Express + Socket.IO setup
+└── public/
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 📨 Email Invite Flow
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Board owners can invite via email
+- Email sent via Resend with link like:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+  ```
+  https://www.linkcollab.sbs/onboard/INVITE_TOKEN
+  ```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 💻 Development
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Start Frontend
+
+```bash
+npm install
+npm run dev
+```
+
+### Start Socket Server
+
+```bash
+cd socket-server
+npm install
+npm run dev
+```
+
+---
+
+## 📦 Deployment
+
+- **Frontend:** Vercel / Resend (supports Next.js SSR)
+- **Socket Server:** Render (Docker-free Node server)
+- **DB:** Supabase / Railway (PostgreSQL)
+
+---
+
+## 🙌 Acknowledgements
+
+- [Clerk](https://clerk.dev) for authentication
+- [Resend](https://resend.com) for email invites
+- [Render](https://render.com) for hosting Socket.IO
+- [Drizzle ORM](https://orm.drizzle.team) for database schema
+
+---
+
+## 📌 Future Enhancements
+
+- ⏳ Link previews via Open Graph API
+- ⏳ Collection-level permissions
+- ⏳ Drag-and-drop for links
+- ⏳ Search and filters
+
+---
+
+## 🔒 License
+
+MIT License – Free to use, build on, and extend.
+
+---
+
+## ✨ Author
+
+Made with ❤️ by **Shridhar Iyer**
