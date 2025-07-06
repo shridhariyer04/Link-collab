@@ -10,11 +10,11 @@ import { InviteEmail } from "@/email/InviteEmail";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { boardId: string } }
+  { params }: { params: Promise<{ boardId: string }> }
 ) {
   try {
     const { userId } = await auth();
-    const boardId: string = params.boardId;
+    const { boardId } = await params; // Await the params
 
     console.log('POST /api/boards/[boardId]/members - Request received:', {
       userId,
@@ -150,11 +150,11 @@ export async function POST(
 // GET method to retrieve board members
 export async function GET(
   req: NextRequest,
-  { params }: { params: { boardId: string } }
+  { params }: { params: Promise<{ boardId: string }> }
 ) {
   try {
     const { userId } = await auth();
-    const boardId: string = params.boardId;
+    const { boardId } = await params; // Await the params
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
