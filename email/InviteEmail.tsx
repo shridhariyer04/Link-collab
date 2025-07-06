@@ -22,7 +22,7 @@ export const InviteEmail: React.FC<InviteEmailProps> = ({ boardName }) => {
           </Text>
           <Button
             style={button}
-            href={`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/onboard`}
+            href={`${process.env.NEXT_PUBLIC_APP_URL}`}
           >
             Accept Invitation
           </Button>
