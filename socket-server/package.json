@@ -1,0 +1,19 @@
+{
+  "name": "socket-server",
+  "version": "1.0.0",
+  "main": "socket-server.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "ts-node socket-server.ts",
+    "start": "node build/socket-server.js",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.1"
+  }
+}
