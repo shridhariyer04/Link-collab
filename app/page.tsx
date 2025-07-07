@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import { ArrowRight, Users, Layers, Shield, Smartphone, ChevronRight } from 'lucide-react';
 
 const LinkCollabLanding: React.FC = () => {
