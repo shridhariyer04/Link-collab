@@ -1,4 +1,3 @@
-// email/InviteEmail.tsx
 import React from 'react';
 import { Html, Body, Container, Text, Button, Head, Preview } from '@react-email/components';
 
@@ -22,7 +21,7 @@ export const InviteEmail: React.FC<InviteEmailProps> = ({ boardName }) => {
           </Text>
           <Button
             style={button}
-            href={`${process.env.NEXT_PUBLIC_APP_URL}`}
+            href={`${process.env.NEXT_PUBLIC_APP_URL}/onboard`}
           >
             Accept Invitation
           </Button>
