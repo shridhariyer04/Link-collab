@@ -16,8 +16,8 @@ export async function POST() {
     console.log("🧑 Onboarding user:", userId);
 
     // Get user info from Clerk
-   const clerk = await clerkClient();
-const clerkUser = await clerk.users.getUser(userId);
+    const clerk = await clerkClient();
+    const clerkUser = await clerk.users.getUser(userId);
     
     if (!clerkUser || !clerkUser.emailAddresses?.[0]?.emailAddress) {
       return NextResponse.json(
@@ -28,6 +28,7 @@ const clerkUser = await clerk.users.getUser(userId);
 
     const userEmail = clerkUser.emailAddresses[0].emailAddress;
     const userName = clerkUser.firstName || clerkUser.username || "Unknown User";
+    const userAvatar = clerkUser.imageUrl || null;
 
     console.log("📧 User email:", userEmail);
 
@@ -35,6 +36,8 @@ const clerkUser = await clerk.users.getUser(userId);
     let user = await db.query.users.findFirst({
       where: eq(users.id, userId),
     });
+
+    let userWasCreated = false;
 
     // If user doesn't exist, create them
     if (!user) {
@@ -45,9 +48,12 @@ const clerkUser = await clerk.users.getUser(userId);
           id: userId,
           email: userEmail,
           name: userName,
+          avatar: userAvatar,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
+
+        userWasCreated = true;
 
         // Fetch the newly created user
         user = await db.query.users.findFirst({
@@ -65,16 +71,27 @@ const clerkUser = await clerk.users.getUser(userId);
     } else {
       console.log("👤 User already exists in database");
       
-      // Update user info if needed (optional - keeps user data fresh)
-      if (user.email !== userEmail || user.name !== userName) {
+      // Update user info if needed (keeps user data fresh)
+      const needsUpdate = 
+        user.email !== userEmail || 
+        user.name !== userName || 
+        user.avatar !== userAvatar;
+
+      if (needsUpdate) {
         console.log("🔄 Updating user information");
-        await db.update(users)
-          .set({
-            email: userEmail,
-            name: userName,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, userId));
+        try {
+          await db.update(users)
+            .set({
+              email: userEmail,
+              name: userName,
+              avatar: userAvatar,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, userId));
+        } catch (updateError) {
+          console.error("❌ Error updating user:", updateError);
+          // Continue anyway, this is not critical
+        }
       }
     }
 
@@ -85,22 +102,24 @@ const clerkUser = await clerk.users.getUser(userId);
       );
     }
 
-    // 1. Check if there's a pending invite
+    // Check if there's a pending invite for this email
     const invite = await db.query.pendingInvites.findFirst({
       where: eq(pendingInvites.email, userEmail),
     });
 
     if (!invite) {
+      console.log("📭 No pending invitation found for this email");
       return NextResponse.json({
-        onboard: false,
-        message: "No pending invitation found for this email",
-        userCreated: !user, // Indicate if user was just created
+        onboard: true,
+        message: "User onboarded successfully",
+        userCreated: userWasCreated,
+        hasInvite: false,
       });
     }
 
     console.log("📨 Pending invite found:", invite);
 
-    // 2. Check if already a member
+    // Check if already a member of this board
     const existingMember = await db.query.boardMembers.findFirst({
       where: and(
         eq(boardMembers.boardId, invite.boardId),
@@ -109,36 +128,60 @@ const clerkUser = await clerk.users.getUser(userId);
     });
 
     if (existingMember) {
-      // Remove the pending invite if already a member
-      await db.delete(pendingInvites).where(eq(pendingInvites.id, invite.id));
+      console.log("👥 User already a member of this board");
+      
+      // Remove the pending invite since they're already a member
+      try {
+        await db.delete(pendingInvites).where(eq(pendingInvites.id, invite.id));
+        console.log("🗑️ Cleaned up pending invite");
+      } catch (deleteError) {
+        console.error("❌ Error deleting pending invite:", deleteError);
+        // Continue anyway
+      }
 
       return NextResponse.json({
         onboard: true,
         message: "User already part of the board",
-        userCreated: false,
+        userCreated: userWasCreated,
+        hasInvite: true,
+        boardId: invite.boardId,
       });
     }
 
-    // 3. Add to board members
-    await db.insert(boardMembers).values({
-      boardId: invite.boardId,
-      userId,
-      role: invite.role as "owner" | "editor" | "viewer",
-    });
+    // Add user to board members
+    try {
+      await db.insert(boardMembers).values({
+        boardId: invite.boardId,
+        userId,
+        role: invite.role as "owner" | "editor" | "viewer",
+      });
 
-    console.log("✅ Added to board:", invite.boardId);
+      console.log("✅ Added to board:", invite.boardId);
+    } catch (insertError) {
+      console.error("❌ Error adding user to board:", insertError);
+      return NextResponse.json(
+        { error: "Failed to add user to board" },
+        { status: 500 }
+      );
+    }
 
-    // 4. Delete invite
-    await db.delete(pendingInvites).where(eq(pendingInvites.id, invite.id));
-
-    console.log("🗑️ Pending invite deleted");
+    // Delete the pending invite
+    try {
+      await db.delete(pendingInvites).where(eq(pendingInvites.id, invite.id));
+      console.log("🗑️ Pending invite deleted");
+    } catch (deleteError) {
+      console.error("❌ Error deleting pending invite:", deleteError);
+      // This is not critical, continue
+    }
 
     return NextResponse.json({
       onboard: true,
       message: "Successfully onboarded to the board",
       boardId: invite.boardId,
-      userCreated: false, // User existed or was created earlier
+      userCreated: userWasCreated,
+      hasInvite: true,
     });
+
   } catch (error) {
     console.error("❌ Error in onboard-user route:", error);
     return NextResponse.json(
