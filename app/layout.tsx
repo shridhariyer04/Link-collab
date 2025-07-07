@@ -1,4 +1,3 @@
-// app/layout.tsx
 import { type Metadata } from 'next'
 import {
   ClerkProvider,
@@ -34,6 +33,8 @@ export default function RootLayout({
   return (
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+      // Remove the explicit URLs to let Clerk handle them automatically
+      // or use the full URLs if you want to be explicit
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       afterSignInUrl="/onboard"
@@ -53,12 +54,12 @@ export default function RootLayout({
               </div>
               <div className="flex items-center gap-4">
                 <SignedOut>
-                  <SignInButton>
+                  <SignInButton mode="redirect">
                     <button className="text-sm text-violet-400 font-medium hover:text-violet-300 transition-colors">
                       Sign In
                     </button>
                   </SignInButton>
-                  <SignUpButton>
+                  <SignUpButton mode="redirect">
                     <button className="bg-violet-600 text-white rounded-md font-medium text-sm h-9 px-4 hover:bg-violet-700 transition-colors">
                       Sign Up
                     </button>
