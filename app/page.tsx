@@ -2,46 +2,27 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 import { ArrowRight, Users, Layers, Shield, Smartphone, ChevronRight } from 'lucide-react';
 
 const LinkCollabLanding: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { isSignedIn } = useUser();
 
-  // Check if user is logged in
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        // Replace this with your actual authentication check
-        // This could be checking localStorage, cookies, or making an API call
-        const token = localStorage.getItem('authToken');
-        const user = localStorage.getItem('user');
-        
-        if (token && user) {
-          setIsLoggedIn(true);
-          // Redirect to boards page if user is logged in
-          router.push('/boards');
-        } else {
-          setIsLoggedIn(false);
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setIsLoggedIn(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuthStatus();
-  }, [router]);
-
-  const handleGetStarted = () => {
-    if (isLoggedIn) {
+    if (isSignedIn) {
       router.push('/boards');
     } else {
-      router.push('/login'); // or '/signup' depending on your preference
+      setIsLoading(false);
+    }
+  }, [isSignedIn, router]);
+
+  const handleGetStarted = () => {
+    if (isSignedIn) {
+      router.push('/boards');
+    } else {
+      router.push('/sign-in');
     }
   };
 
@@ -81,7 +62,6 @@ const LinkCollabLanding: React.FC = () => {
     { icon: "🎨", title: "Designers collaborating on inspiration", description: "Share mood boards and design references" }
   ];
 
-  // Show loading state while checking authentication
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
@@ -122,7 +102,7 @@ const LinkCollabLanding: React.FC = () => {
                   onClick={handleGetStarted}
                   className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-violet-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 flex items-center justify-center"
                 >
-                  {isLoggedIn ? 'Go to Boards' : 'Start Collaborating'}
+                  {isSignedIn ? 'Go to Boards' : 'Start Collaborating'}
                   <ChevronRight className="ml-2 w-5 h-5" />
                 </button>
               </div>
