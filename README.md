@@ -6,8 +6,7 @@
 
 ## 🌐 Live Demo
 
-[www.linkcollab.sbs](https://www.linkcollab.sbs)
-
+https://www.link-collab.sbs/
 ---
 
 ## 🚀 Features
