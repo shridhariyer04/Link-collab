@@ -65,7 +65,7 @@ export async function POST() {
     } else {
       console.log("👤 User already exists in database");
       
-      // Update user info to keep data fresh
+      // Update user info if needed (keeps user data fresh)
       const needsUpdate = 
         user.email !== userEmail || 
         user.name !== userName || 
@@ -82,7 +82,6 @@ export async function POST() {
               updatedAt: new Date(),
             })
             .where(eq(users.id, userId));
-          console.log("✅ User info updated");
         } catch (updateError) {
           console.error("❌ Error updating user:", updateError);
           // Continue anyway, this is not critical
@@ -90,13 +89,13 @@ export async function POST() {
       }
     }
 
-    // Look for pending invites for this email
-    const pendingInvite = await db.query.pendingInvites.findFirst({
+    // Look for ALL pending invites for this email (there might be multiple)
+    const invites = await db.query.pendingInvites.findMany({
       where: eq(pendingInvites.email, userEmail),
     });
 
-    if (!pendingInvite) {
-      console.log("📭 No pending invitation found for this email");
+    if (invites.length === 0) {
+      console.log("📭 No pending invitations found for this email");
       return NextResponse.json({
         onboard: true,
         message: "User onboarded successfully",
@@ -105,68 +104,68 @@ export async function POST() {
       });
     }
 
-    console.log("📨 Pending invite found:", pendingInvite);
+    console.log(`📨 Found ${invites.length} pending invite(s)`);
 
-    // Check if user is already a member of this board
-    const existingMember = await db.query.boardMembers.findFirst({
-      where: and(
-        eq(boardMembers.boardId, pendingInvite.boardId),
-        eq(boardMembers.userId, userId)
-      ),
-    });
+    let processedInvites = 0;
+    let mainBoardId = null;
 
-    if (existingMember) {
-      console.log("👥 User already a member of this board");
-      
-      // Clean up the pending invite
-      try {
-        await db.delete(pendingInvites).where(eq(pendingInvites.id, pendingInvite.id));
-        console.log("🗑️ Cleaned up pending invite");
-      } catch (deleteError) {
-        console.error("❌ Error deleting pending invite:", deleteError);
+    // Process each invite
+    for (const invite of invites) {
+      console.log(`Processing invite for board: ${invite.boardId}`);
+
+      // Check if already a member of this board
+      const existingMember = await db.query.boardMembers.findFirst({
+        where: and(
+          eq(boardMembers.boardId, invite.boardId),
+          eq(boardMembers.userId, userId)
+        ),
+      });
+
+      if (existingMember) {
+        console.log(`👥 User already a member of board ${invite.boardId}`);
+      } else {
+        // Add user to board members
+        try {
+          await db.insert(boardMembers).values({
+            boardId: invite.boardId,
+            userId,
+            role: invite.role as "owner" | "editor" | "viewer",
+          });
+
+          console.log(`✅ Added to board: ${invite.boardId}`);
+          processedInvites++;
+          
+          // Set the first processed board as main board to redirect to
+          if (!mainBoardId) {
+            mainBoardId = invite.boardId;
+          }
+        } catch (insertError) {
+          console.error(`❌ Error adding user to board ${invite.boardId}:`, insertError);
+          // Continue with other invites
+        }
       }
 
-      return NextResponse.json({
-        onboard: true,
-        message: "User already part of the board",
-        userCreated: userWasCreated,
-        hasInvite: true,
-        boardId: pendingInvite.boardId,
-      });
+      // Delete the processed invite
+      try {
+        await db.delete(pendingInvites).where(eq(pendingInvites.id, invite.id));
+        console.log(`🗑️ Deleted pending invite for board ${invite.boardId}`);
+      } catch (deleteError) {
+        console.error(`❌ Error deleting pending invite:`, deleteError);
+        // This is not critical, continue
+      }
     }
 
-    // Add user to board members
-    try {
-      await db.insert(boardMembers).values({
-        boardId: pendingInvite.boardId,
-        userId,
-        role: pendingInvite.role as "editor" | "viewer",
-      });
-
-      console.log("✅ User added to board:", pendingInvite.boardId);
-    } catch (insertError) {
-      console.error("❌ Error adding user to board:", insertError);
-      return NextResponse.json(
-        { error: "Failed to add user to board" },
-        { status: 500 }
-      );
-    }
-
-    // Delete the pending invite
-    try {
-      await db.delete(pendingInvites).where(eq(pendingInvites.id, pendingInvite.id));
-      console.log("🗑️ Pending invite deleted successfully");
-    } catch (deleteError) {
-      console.error("❌ Error deleting pending invite:", deleteError);
-      // This is not critical, continue
-    }
+    const message = processedInvites > 0 
+      ? `Successfully added to ${processedInvites} board(s)`
+      : "Welcome! All invitations have been processed.";
 
     return NextResponse.json({
       onboard: true,
-      message: "Successfully onboarded and added to board",
-      boardId: pendingInvite.boardId,
+      message,
+      boardId: mainBoardId,
       userCreated: userWasCreated,
       hasInvite: true,
+      invitesProcessed: processedInvites,
     });
 
   } catch (error) {

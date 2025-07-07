@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 
 interface OnboardResponse {
   onboard: boolean;
@@ -10,15 +11,20 @@ interface OnboardResponse {
   boardId?: string;
   userCreated: boolean;
   hasInvite: boolean;
+  invitesProcessed?: number;
 }
 
 export default function OnboardPage() {
   const router = useRouter();
+  const { user, isLoaded } = useUser();
   const [status, setStatus] = useState("Setting things up for you...");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Wait for Clerk to load user data
+    if (!isLoaded) return;
+
     const onboard = async () => {
       try {
         setStatus("Creating your account...");
@@ -42,7 +48,11 @@ export default function OnboardPage() {
         if (data.userCreated) {
           setStatus("Account created successfully!");
         } else if (data.hasInvite) {
-          setStatus("Welcome back! Redirecting to your board...");
+          if (data.invitesProcessed && data.invitesProcessed > 1) {
+            setStatus(`Great! You've been added to ${data.invitesProcessed} boards. Redirecting...`);
+          } else {
+            setStatus("Welcome! Redirecting to your board...");
+          }
         } else {
           setStatus("Account setup complete!");
         }
@@ -56,7 +66,7 @@ export default function OnboardPage() {
             // Redirect to boards list
             router.push("/boards");
           }
-        }, 1500);
+        }, 2000);
 
       } catch (err) {
         console.error("Onboarding failed:", err);
@@ -71,7 +81,20 @@ export default function OnboardPage() {
     };
 
     onboard();
-  }, [router]);
+  }, [router, isLoaded]);
+
+  // Show loading while Clerk loads
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Loading...</h2>
+          <p className="text-gray-600 text-sm">Please wait while we load your account...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
