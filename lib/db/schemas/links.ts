@@ -1,20 +1,23 @@
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
 import { collections } from "./collections";
 import { users } from "./users";
-users
 
-export const links = pgTable("links", {
-  id: uuid("id").defaultRandom().primaryKey(),
 
-  url: text("url").notNull(),
-  title: text("title"),
-  description: text("description"),
-  favicon: text("favicon"),
-  tags: text("tags").array(),
-  createdBy: text("created_by").notNull().references(() => users.id),
-  collectionId: uuid("collection_id")
-    .notNull()
-    .references(() => collections.id, { onDelete: "cascade" }),
+export const items = pgTable("items",{
+  id:uuid("id").defaultRandom().primaryKey(),
 
-  createdAt: timestamp("created_at").defaultNow(),
-});
+  type:text("type").notNull(),
+  title:text("title"),
+  url:text("url"),
+  description:text("description"),
+  favicon:text("favicon"),
+  tags:text("tags").array(),
+  content:text("content"),
+  fileUrl:text("file_url"),
+
+  created_By:text("created_by").notNull().references(() =>users.id),
+  collectionId:uuid("collection_id").notNull().references(() =>collections.id,{onDelete:"cascade"}),
+   created_At:timestamp("created_at").defaultNow()
+
+
+})
