@@ -8,6 +8,7 @@ import {
   UserButton,
 } from '@clerk/nextjs'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
 const geistSans = Geist({
@@ -33,8 +34,6 @@ export default function RootLayout({
   return (
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
-      // Remove the explicit URLs to let Clerk handle them automatically
-      // or use the full URLs if you want to be explicit
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       afterSignInUrl="/onboard"
@@ -52,6 +51,7 @@ export default function RootLayout({
                   LinkCollab
                 </span>
               </div>
+
               <div className="flex items-center gap-4">
                 <SignedOut>
                   <SignInButton mode="redirect">
@@ -73,7 +73,17 @@ export default function RootLayout({
             </div>
           </nav>
 
-          {/* Page Content */}
+          {/* 🔥 Global Toast UI */}
+          <Toaster position="top-center" toastOptions={{
+            duration: 3000,
+            style: {
+              background: "#1f1f1f",
+              color: "#fff",
+              border: "1px solid #333",
+            },
+          }} />
+
+          {/* Main App Content */}
           {children}
         </body>
       </html>
