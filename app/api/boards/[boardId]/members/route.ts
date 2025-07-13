@@ -1,3 +1,4 @@
+// app/api/boards/[boardId]/members/route.ts
 import React from "react";
 import { db } from "@/lib/db";
 import { boardMembers, users, pendingInvites, boards } from "@/lib/db/schemas";

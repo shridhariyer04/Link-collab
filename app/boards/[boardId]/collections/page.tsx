@@ -328,7 +328,7 @@ export default function CollectionsPage() {
                 </div>
                 
                 <button
-                  onClick={() => router.push(`/boards/${boardId}/collections/${collection.id}/links`)}
+                  onClick={() => router.push(`/boards/${boardId}/collections/${collection.id}/items`)}
                   className="w-full py-2 text-sm font-medium bg-gray-700 hover:bg-gray-600 rounded-md text-white transition-colors"
                 >
                   Open Collection
