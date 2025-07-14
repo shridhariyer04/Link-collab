@@ -1,9 +1,12 @@
 // app/api/boards/[boardId]/collections/[collectionId]/route.ts
 import { db } from "@/lib/db";
-import { collections } from "@/lib/db/schemas";
+import { collections, users } from "@/lib/db/schemas";
 import { NextRequest, NextResponse } from "next/server";
 import { eq, and } from "drizzle-orm";
 import { requireBoardAccess } from "@/lib/permission";
+import { ActivityLogger } from "@/lib/activity-logger";
+import { clerkClient } from "@clerk/nextjs/server";
+
 
 export async function GET(
   _: NextRequest,
@@ -44,12 +47,20 @@ export async function PATCH(
       return access;
     }
 
-    const { role } = access;
+    const {userId, role } = access;
     if (role !== "owner" && role !== "editor") {
       return NextResponse.json({ error: "Forbidden: Only owners or editors can update collections" }, { status: 403 });
     }
 
     const { name } = await req.json();
+
+    
+    const user = await db.query.users.findFirst({
+    where: eq(users.id, userId)
+     });
+      const username = user?.name ?? userId; // fallback to userId
+
+
 
     if (!name || typeof name !== "string" || !name.trim()) {
       return NextResponse.json({ error: "Invalid or missing collection name" }, { status: 400 });
@@ -64,6 +75,13 @@ export async function PATCH(
     if (!updatedCollection) {
       return NextResponse.json({ error: "Collection not found" }, { status: 404 });
     }
+    await ActivityLogger.log({
+  boardId,
+  collectionId,
+  userId,
+  action: "updated_collection",
+  message: `${username} renamed collection to "${updatedCollection.name}"`
+});
 
     return NextResponse.json({ collection: updatedCollection });
   } catch (error) {
@@ -84,10 +102,16 @@ export async function DELETE(
       return access;
     }
 
-    const { role } = access;
+    const {userId, role } = access;
     if (role !== "owner" && role !== "editor") {
       return NextResponse.json({ error: "Forbidden: Only owners or editors can delete collections" }, { status: 403 });
     }
+    
+    const user = await db.query.users.findFirst({
+    where: eq(users.id, userId)
+     });
+        const username = user?.name ?? userId; // fallback to userId
+
 
     const [deletedCollection] = await db
       .delete(collections)
@@ -97,6 +121,15 @@ export async function DELETE(
     if (!deletedCollection) {
       return NextResponse.json({ error: "Collection not found" }, { status: 404 });
     }
+
+   await ActivityLogger.log({
+  boardId,
+  collectionId,
+  userId,
+  action: "deleted_collection",
+  message: `${username} deleted collection "${deletedCollection?.name ?? "Unnamed"}"`
+});
+
 
     return NextResponse.json({ success: true });
   } catch (error) {

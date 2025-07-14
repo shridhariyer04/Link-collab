@@ -1,9 +1,11 @@
 import { db } from "@/lib/db";
-import { boards, boardMembers } from "@/lib/db/schemas";
+import { boards, boardMembers, users } from "@/lib/db/schemas";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireBoardAccess } from "@/lib/permission";
+import { ActivityLogger } from "@/lib/activity-logger";
+
 
 // ──────────────── GET Board (Check membership) ────────────────
 export async function GET(
@@ -55,6 +57,11 @@ export async function PATCH(
 
   const { userId, role } = access; // now safe to destructure
 
+      const user = await db.query.users.findFirst({
+    where: eq(users.id, userId)
+     });
+      const username = user?.name ?? userId;
+
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { name } = await req.json();
@@ -68,6 +75,12 @@ export async function PATCH(
   });
 
   if (!member) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  await ActivityLogger.log({
+  boardId,
+  userId,
+  action: "deleted_collection",
+  message: `${username} updated board }"`
+});
 
   await db.update(boards).set({ name }).where(eq(boards.id, boardId));
 
@@ -89,9 +102,21 @@ export async function DELETE(
     return access; // early return if unauthorized
   }
 
-  const { userId, role } = access; // now safe to destructure
+    const { userId, role } = access; // now safe to destructure
   
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  
+        const user = await db.query.users.findFirst({
+      where: eq(users.id, userId)
+       });
+        const username = user?.name ?? userId;
+
+await ActivityLogger.log({
+  boardId,
+  userId,
+  action: "deleted_collection",
+  message: `${username} deleted collection }"`
+});        
 
   const member = await db.query.boardMembers.findFirst({
     where: (bm, { eq, and }) => and(eq(bm.boardId, boardId), eq(bm.userId, userId)),

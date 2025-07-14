@@ -1,10 +1,13 @@
 import { db } from "@/lib/db";
-import { collections } from "@/lib/db/schemas";
+import { collections, users } from "@/lib/db/schemas";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { requireBoardAccess } from "@/lib/permission";
+import { ActivityLogger } from "@/lib/activity-logger";
+ActivityLogger
+
 
 export async function GET(
   req: Request,
@@ -53,6 +56,12 @@ export async function POST(
   const { userId, role } = access; 
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const user = await db.query.users.findFirst({
+  where: eq(users.id, userId)
+});
+const username = user?.name ?? userId; // fallback to userId
+
+
   const { name } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
@@ -65,6 +74,15 @@ export async function POST(
       boardId: boardId,
       createdBy: userId
     });
+
+    await ActivityLogger.log({
+  boardId,
+  collectionId,
+  userId,
+  action: "deleted_collection",
+  message: `${username} deleted collection "${collections?.name ?? "Unnamed"}"`
+});
+
 
     return NextResponse.json({ 
       collection: { 
