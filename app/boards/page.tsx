@@ -4,7 +4,9 @@ import { Plus, Edit2, Trash2, FolderOpen, Search, Wifi, WifiOff, MoreVertical, U
 import { useRouter } from 'next/navigation';
 import io, { Socket } from 'socket.io-client';
 import InviteMemberForm from '@/components/invite/InviteMemberForm';
+import ViewMembersModal from '@/components/board/ViewMemberModal';
 import { useUser } from '@clerk/nextjs';
+import { toast } from 'react-hot-toast';
 
 interface Board {
   id: string;
@@ -24,7 +26,9 @@ const BoardsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showBoardModal, setShowBoardModal] = useState<boolean>(false);
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [showMembersModal, setShowMembersModal] = useState<boolean>(false);
   const [selectedBoardForInvite, setSelectedBoardForInvite] = useState<string | null>(null);
+  const [selectedBoardForMembers, setSelectedBoardForMembers] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [boardName, setBoardName] = useState<string>('');
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -64,12 +68,9 @@ const BoardsPage: React.FC = () => {
     fetchBoards();
     
     // Initialize socket connection
-  
-
-// 👇 Pulling from .env
-const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
-  transports: ["websocket"],
-});
+    const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
+      transports: ["websocket"],
+    });
 
     setSocket(newSocket);
 
@@ -117,6 +118,7 @@ const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
       }
     } catch (error) {
       console.error('Error fetching boards:', error);
+      toast.error('Failed to load boards');
     }
     setIsLoading(false);
   };
@@ -135,19 +137,25 @@ const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
         await fetchBoards();
         setBoardName('');
         setShowBoardModal(false);
+        toast.success('Board created successfully!');
         
         // Emit board creation event (optional - if you want to sync board creation)
         if (socket && isConnected) {
           const newBoard = await response.json();
           socket.emit('board-created', newBoard);
         }
+      } else {
+        toast.error('Failed to create board');
       }
     } catch (error) {
       console.error('Error creating board:', error);
+      toast.error('Failed to create board');
     }
   };
 
   const updateBoard = async (boardId: string, name: string): Promise<void> => {
+    if (!name.trim()) return;
+    
     try {
       const response = await fetch(`/api/boards/${boardId}`, {
         method: 'PATCH',
@@ -158,14 +166,18 @@ const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
       if (response.ok) {
         await fetchBoards();
         setEditingItem(null);
+        toast.success('Board updated successfully!');
         
         // Emit board update event (optional)
         if (socket && isConnected) {
           socket.emit('board-updated', { boardId, name });
         }
+      } else {
+        toast.error('Failed to update board');
       }
     } catch (error) {
       console.error('Error updating board:', error);
+      toast.error('Failed to update board');
     }
   };
 
@@ -179,14 +191,18 @@ const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
       
       if (response.ok) {
         await fetchBoards();
+        toast.success('Board deleted successfully!');
         
         // Emit board deletion event (optional)
         if (socket && isConnected) {
           socket.emit('board-deleted', { boardId });
         }
+      } else {
+        toast.error('Failed to delete board');
       }
     } catch (error) {
       console.error('Error deleting board:', error);
+      toast.error('Failed to delete board');
     }
   };
 
@@ -194,6 +210,13 @@ const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
     console.log('Invite clicked for board:', boardId);
     setSelectedBoardForInvite(boardId);
     setShowInviteModal(true);
+    setActiveDropdown(null);
+  };
+
+  const handleViewMembersClick = (boardId: string) => {
+    console.log('View members clicked for board:', boardId);
+    setSelectedBoardForMembers(boardId);
+    setShowMembersModal(true);
     setActiveDropdown(null);
   };
 
@@ -317,7 +340,10 @@ const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
                       <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
                         <div className="py-1">
                           <button
-                            onClick={() => setEditingItem(board.id)}
+                            onClick={() => {
+                              setEditingItem(board.id);
+                              setActiveDropdown(null);
+                            }}
                             className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
                           >
                             <Edit2 className="w-4 h-4 mr-2" />
@@ -331,22 +357,24 @@ const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
                             Invite Members
                           </button>
                           <button
-                            onClick={() => {
-                              console.log('View members for board:', board.id);
-                              setActiveDropdown(null);
-                            }}
+                            onClick={() => handleViewMembersClick(board.id)}
                             className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
                           >
                             <Users className="w-4 h-4 mr-2" />
                             View Members
                           </button>
-                          <button
-                            onClick={() => deleteBoard(board.id)}
-                            className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-gray-700"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </button>
+                          {canInviteMembers(board) && (
+                            <button
+                              onClick={() => {
+                                deleteBoard(board.id);
+                                setActiveDropdown(null);
+                              }}
+                              className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-gray-700"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
@@ -429,6 +457,7 @@ const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
               onSuccess={() => {
                 setShowInviteModal(false);
                 setSelectedBoardForInvite(null);
+                toast.success('Member invited successfully!');
               }}
             />
             
@@ -445,6 +474,17 @@ const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
             </div>
           </div>
         </div>
+      )}
+
+      {/* View Members Modal */}
+      {showMembersModal && selectedBoardForMembers && (
+        <ViewMembersModal
+          boardId={selectedBoardForMembers}
+          onClose={() => {
+            setShowMembersModal(false);
+            setSelectedBoardForMembers(null);
+          }}
+        />
       )}
     </div>
   );
