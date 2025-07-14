@@ -44,19 +44,19 @@ export async function GET(
 
   //POST handler =  Create new item
 
-  export async function POST(req:NextRequest,{params}:{params:Promise<{boardId:string; collectionId:string}>}) {
-    try {
-      const {boardId, collectionId} = await params;
+  export async function POST(req: NextRequest, { params }: { params: Promise<{ boardId: string; collectionId: string }> }) {
+  try {
+    const { boardId, collectionId } = await params;
 
-      const access = await requireBoardAccess(boardId);
-      if(access instanceof NextResponse) return access
+    const access = await requireBoardAccess(boardId);
+    if (access instanceof NextResponse) return access;
 
-      const {role,userId} = access;
+    const { role, userId } = access;
 
-      const body = await req.json();
+    const body = await req.json();
 
-      const {type,title,url,description,content,fileData,tags} = body;
-       if (!type || !title) {
+    const { type, title, url, description, content, fileData, tags } = body;
+    if (!type || !title) {
       return NextResponse.json({ error: "Type and title are required" }, { status: 400 });
     }
 
@@ -73,21 +73,22 @@ export async function GET(
     }
 
     const itemData = {
-      id:uuidv4(),
+      id: uuidv4(),
       type,
       title,
-      description:description??null,
-      url:type === "link" ?url:null,
-      content:type ==="content"?url:null,
-      fileUrl:type ==="file"?fileData.url:null,
-       tags: tags ?? [],
+      description: description ?? null,
+      url: type === "link" ? url : null,
+      content: type === "note" ? content : null, // Fixed typo: "content" to "note"
+      fileUrl: type === "file" ? fileData.url : null,
+      tags: tags ?? [],
       createdBy: userId,
       collectionId,
       createdAt: new Date(),
     };
-     await db.insert(items).values(itemData);
 
- await ActivityLogger.log({
+    await db.insert(items).values(itemData);
+
+    await ActivityLogger.log({
       boardId,
       collectionId,
       itemId: itemData.id,

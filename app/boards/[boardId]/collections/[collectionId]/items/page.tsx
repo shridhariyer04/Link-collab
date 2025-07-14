@@ -62,6 +62,14 @@ export default function ItemsPage() {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState<boolean>(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+   const [editFormData, setEditFormData] = useState({
+    title: '',
+    url: '',
+    description: '',
+    content: '',
+    fileUrl: ''
+  });
   
   const router = useRouter();
   const params = useParams();
@@ -235,28 +243,30 @@ export default function ItemsPage() {
   };
 
   const updateItem = async (itemId: string, fields: Partial<Item>): Promise<void> => {
-    try {
+   try {
       const response = await fetch(`/api/boards/${boardId}/collections/${collectionId}/items/${itemId}`, {
-        method: 'PATCH',
+        method: 'PUT', // Changed from PATCH to PUT to match your API
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(fields)
       });
       
       if (response.ok) {
+        const data = await response.json();
         setItems(prev => prev.map(item => 
-          item.id === itemId ? { ...item, ...fields } : item
+          item.id === itemId ? data.item : item
         ));
         setEditingItem(null);
+        setError(null);
         
         if (socket && isConnected) {
           socket.emit('update-item', {
             boardId,
             collectionId,
             itemId,
-            fields
+            fields: data.item
           });
         }
-      } else {
+      }  else {
         const errorData = await response.json();
         setError(errorData.error || "Failed to update item");
       }
@@ -348,6 +358,17 @@ export default function ItemsPage() {
     setPreviewUrl(null);
     setError(null);
   };
+
+   const resetEditForm = () => {
+    setEditFormData({
+      title: '',
+      url: '',
+      description: '',
+      content: '',
+      fileUrl: ''
+    });
+  };
+
 
   const filteredItems = items.filter(item => 
     item.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -453,30 +474,115 @@ export default function ItemsPage() {
                   
                   <div className="flex-1">
                     <div>
-                      <h3 className="text-base font-semibold text-white mb-1 line-clamp-2">
-                        {item.title}
-                      </h3>
-                      {item.description && (
-                        <p className="text-sm text-gray-300 mb-2 line-clamp-2">
-                          {item.description}
-                        </p>
-                      )}
-                      {item.content && (
-                        <p className="text-sm text-gray-300 mb-2 line-clamp-3">
-                          {item.content}
-                        </p>
-                      )}
-                      {item.url && (
-                        <p className="text-sm text-blue-400 mb-2">
-                          {new URL(item.url).hostname}
-                        </p>
+                      {editingItem === item.id ? (
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            value={editFormData.title}
+                            onChange={(e) => setEditFormData({...editFormData, title: e.target.value})}
+                            className="w-full p-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-violet-500 text-white text-base font-semibold"
+                            placeholder="Title"
+                          />
+                          
+                          {item.type === 'link' && (
+                            <input
+                              type="url"
+                              value={editFormData.url}
+                              onChange={(e) => setEditFormData({...editFormData, url: e.target.value})}
+                              className="w-full p-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-violet-500 text-white text-sm"
+                              placeholder="URL"
+                            />
+                          )}
+                          
+                          {item.type === 'note' && (
+                            <textarea
+                              value={editFormData.content}
+                              onChange={(e) => setEditFormData({...editFormData, content: e.target.value})}
+                              className="w-full p-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-violet-500 text-white text-sm resize-none"
+                              rows={4}
+                              placeholder="Note content"
+                            />
+                          )}
+                          
+                          <textarea
+                            value={editFormData.description}
+                            onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
+                            className="w-full p-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-violet-500 text-white text-sm resize-none"
+                            rows={2}
+                            placeholder="Description (optional)"
+                          />
+                          
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                const updateData = {
+                                  title: editFormData.title,
+                                  description: editFormData.description,
+                                  ...(item.type === 'link' && { url: editFormData.url }),
+                                  ...(item.type === 'note' && { content: editFormData.content })
+                                };
+                                updateItem(item.id, updateData);
+                                resetEditForm();
+                              }}
+                              className="px-3 py-1 bg-violet-600 text-white rounded text-sm hover:bg-violet-700 transition-colors"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingItem(null);
+                                resetEditForm();
+                              }}
+                              className="px-3 py-1 bg-gray-700 text-white rounded text-sm hover:bg-gray-600 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <h3 className="text-base font-semibold text-white mb-1 line-clamp-2">
+                            {item.title}
+                          </h3>
+                          {item.description && (
+                            <p className="text-sm text-gray-300 mb-2 line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+                          {item.content && (
+                            <div className="text-sm text-gray-300 mb-2">
+                              <div className="whitespace-pre-wrap line-clamp-3">
+                                {item.content}
+                              </div>
+                            </div>
+                          )}
+                          {item.url && (
+                            <p className="text-sm text-blue-400 mb-2 truncate">
+                              {item.url}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => setEditingItem(editingItem === item.id ? null : item.id)}
+                      onClick={() => {
+                        if (editingItem === item.id) {
+                          setEditingItem(null);
+                          resetEditForm();
+                        } else {
+                          setEditingItem(item.id);
+                          setEditFormData({
+                            title: item.title || '',
+                            url: item.url || '',
+                            description: item.description || '',
+                            content: item.content || '',
+                            fileUrl: item.fileUrl || ''
+                          });
+                        }
+                      }}
                       className="p-1 hover:bg-gray-700 rounded transition-colors text-gray-400 hover:text-white"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -612,7 +718,7 @@ export default function ItemsPage() {
                   {previewUrl && (
                     <div className="mt-2">
                       <p className="text-sm text-green-400">✅ File uploaded successfully!</p>
-                      {previewUrl.match(/\.(jpeg|jpg|png|gif|webp)$/i) ? (
+                      {previewUrl.match(/\.(jpeg|jpg|png|gif|webp|pdf)$/i) ? (
                         <img src={previewUrl} alt="Preview" className="w-48 mt-2 rounded shadow" />
                       ) : (
                         <a 
