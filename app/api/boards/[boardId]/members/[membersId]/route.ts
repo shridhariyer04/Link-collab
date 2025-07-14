@@ -1,24 +1,16 @@
 // app/api/boards/[boardId]/members/[memberId]/route.ts
 import { db } from "@/lib/db";
 import { boardMembers } from "@/lib/db/schemas";
-import { auth } from "@clerk/nextjs/server";
 import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { requireBoardAccess } from "@/lib/permission";
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { boardId: string; memberId: string } }
+  { params }: { params: Promise<{ boardId: string; memberId: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    const { boardId, memberId } = params;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" }, 
-        { status: 401 }
-      );
-    }
+    const { boardId, memberId } = await params;
 
     if (!boardId || !memberId) {
       return NextResponse.json(
@@ -27,23 +19,14 @@ export async function DELETE(
       );
     }
 
-    // Check if requester is a member of the board
-    const requester = await db.query.boardMembers.findFirst({
-      where: and(
-        eq(boardMembers.boardId, boardId), 
-        eq(boardMembers.userId, userId)
-      ),
-    });
+    // Check if user has access to this board
+    const access = await requireBoardAccess(boardId);
+    if (access instanceof NextResponse) return access;
 
-    if (!requester) {
-      return NextResponse.json(
-        { error: "You are not a member of this board" }, 
-        { status: 403 }
-      );
-    }
+    const { userId, role } = access;
 
     // Check if requester is owner
-    if (requester.role !== "owner") {
+    if (role !== "owner") {
       return NextResponse.json(
         { error: "Only board owners can remove members" }, 
         { status: 403 }
