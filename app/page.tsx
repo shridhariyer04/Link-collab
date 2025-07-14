@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import { ArrowRight, Users, Layers, Shield, Smartphone, ChevronRight } from 'lucide-react';
+import { ArrowRight, Users, Layers, Shield, Smartphone, ChevronRight, FileText, Link } from 'lucide-react';
 
 const LinkCollabLanding: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -22,7 +22,7 @@ const LinkCollabLanding: React.FC = () => {
     if (isSignedIn) {
       router.push('/boards');
     } else {
-      router.push('/sign-in');
+      router.push('/sign-up');
     }
   };
 
@@ -34,8 +34,8 @@ const LinkCollabLanding: React.FC = () => {
     },
     {
       icon: <Layers className="w-8 h-8" />,
-      title: "Link Collections per Board",
-      description: "Organize your links into meaningful collections"
+      title: "Organized Collections",
+      description: "Organize your links, files, and notes into meaningful collections"
     },
     {
       icon: <Shield className="w-8 h-8" />,
@@ -51,15 +51,15 @@ const LinkCollabLanding: React.FC = () => {
 
   const steps = [
     { title: "Create a Board", description: "Start by creating your first collaboration board" },
-    { title: "Add Collections", description: "Organize your links into themed collections" },
-    { title: "Paste Links", description: "Add links and collaborate with your team in real-time" }
+    { title: "Add Collections", description: "Organize your content into themed collections" },
+    { title: "Add Content", description: "Add links, files, and notes - collaborate with your team in real-time" }
   ];
 
   const useCases = [
-    { icon: "🔗", title: "Teams sharing research links", description: "Centralize all your research and references" },
-    { icon: "🧑‍💻", title: "Developers organizing API docs", description: "Keep all your development resources organized" },
-    { icon: "📚", title: "Students collecting resources", description: "Gather study materials and academic resources" },
-    { icon: "🎨", title: "Designers collaborating on inspiration", description: "Share mood boards and design references" }
+    { icon: "🔗", title: "Teams sharing research resources", description: "Centralize links, documents, and research notes" },
+    { icon: "🧑‍💻", title: "Developers organizing documentation", description: "Keep API docs, code snippets, and notes organized" },
+    { icon: "📚", title: "Students collecting study materials", description: "Gather links, files, and study notes in one place" },
+    { icon: "🎨", title: "Designers collaborating on projects", description: "Share inspiration links, files, and project notes" }
   ];
 
   if (isLoading) {
@@ -76,8 +76,8 @@ const LinkCollabLanding: React.FC = () => {
   return (
     <>
       <Head>
-        <title>LinkCollab - Collaborative Link Management</title>
-        <meta name="description" content="Create boards, save important links, and collaborate with friends in real-time" />
+        <title>LinkCollab - Collaborative Content Management</title>
+        <meta name="description" content="Create boards, save links, files, and notes, and collaborate with friends in real-time" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -92,10 +92,10 @@ const LinkCollabLanding: React.FC = () => {
                   Collaborate
                 </span>
                 <br />
-                <span className="text-white">on Links</span>
+                <span className="text-white">on Everything</span>
               </h1>
               <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-                Create boards, save all your important links, and collaborate with friends in real-time
+                Create boards, save links, files, and notes, and collaborate with friends in real-time
               </p>
               <div className="flex justify-center mb-12">
                 <button 
@@ -115,7 +115,7 @@ const LinkCollabLanding: React.FC = () => {
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
               <h2 className="text-4xl font-bold text-white mb-4">Core Features</h2>
-              <p className="text-xl text-gray-300">Everything you need for seamless link collaboration</p>
+              <p className="text-xl text-gray-300">Everything you need for seamless content collaboration</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -161,29 +161,74 @@ const LinkCollabLanding: React.FC = () => {
         <section className="py-20 px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-white mb-4">Perfect for Link Storage</h2>
-              <p className="text-xl text-gray-300">Organize and share your important links effortlessly</p>
+              <h2 className="text-4xl font-bold text-white mb-4">Perfect for Content Organization</h2>
+              <p className="text-xl text-gray-300">Organize and share your links, files, and notes effortlessly</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 hover:border-violet-500/50 transition-all duration-300">
                 <div className="flex items-start">
-                  <span className="text-3xl mr-4">🔗</span>
+                  <Link className="w-8 h-8 text-violet-400 mr-4 mt-1" />
                   <div>
-                    <h3 className="text-white font-semibold text-lg mb-2">Store Your Links</h3>
-                    <p className="text-gray-400">Keep all your important links organized in one place</p>
+                    <h3 className="text-white font-semibold text-lg mb-2">Save Links</h3>
+                    <p className="text-gray-400">Keep all your important links organized and accessible</p>
                   </div>
                 </div>
               </div>
+              <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 hover:border-violet-500/50 transition-all duration-300">
+                <div className="flex items-start">
+                  <span className="text-3xl mr-4">📁</span>
+                  <div>
+                    <h3 className="text-white font-semibold text-lg mb-2">Upload Files</h3>
+                    <p className="text-gray-400">Store and share documents, images, and other files</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 hover:border-violet-500/50 transition-all duration-300">
+                <div className="flex items-start">
+                  <FileText className="w-8 h-8 text-violet-400 mr-4 mt-1" />
+                  <div>
+                    <h3 className="text-white font-semibold text-lg mb-2">Create Notes</h3>
+                    <p className="text-gray-400">Add rich text notes and collaborate on ideas</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-12">
               <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 hover:border-violet-500/50 transition-all duration-300">
                 <div className="flex items-start">
                   <span className="text-3xl mr-4">👥</span>
                   <div>
                     <h3 className="text-white font-semibold text-lg mb-2">Share with Others</h3>
-                    <p className="text-gray-400">Collaborate and share your link collections with friends</p>
+                    <p className="text-gray-400">Collaborate and share your content collections with friends and team members</p>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Updated Use Cases */}
+        <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-900/50">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-white mb-4">Use Cases</h2>
+              <p className="text-xl text-gray-300">See how different teams use LinkCollab</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {useCases.map((useCase, index) => (
+                <div key={index} className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 hover:border-violet-500/50 transition-all duration-300">
+                  <div className="flex items-start">
+                    <span className="text-3xl mr-4">{useCase.icon}</span>
+                    <div>
+                      <h3 className="text-white font-semibold text-lg mb-2">{useCase.title}</h3>
+                      <p className="text-gray-400">{useCase.description}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
